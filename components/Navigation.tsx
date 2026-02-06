@@ -1,18 +1,38 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Menu, X, TrendingUp, Calendar, Newspaper, BookOpen, BarChart3 } from 'lucide-react'
+import {
+  Menu,
+  X,
+  TrendingUp,
+  Calendar,
+  Newspaper,
+  BookOpen,
+  BarChart3,
+  LogIn,
+  User,
+  LogOut,
+} from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { getCurrentSession, logoutUser } from '@/lib/auth/auth'
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [session, setSession] = useState<any>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50)
     }
     window.addEventListener('scroll', handleScroll)
+
+    // Check for session
+    const currentSession = getCurrentSession()
+    setSession(currentSession)
+
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
@@ -31,6 +51,12 @@ export default function Navigation() {
     { name: 'TradingView Setup', href: '/guides/tradingview', icon: BookOpen },
     { name: 'Deriv Guide', href: '/guides/deriv', icon: BarChart3 },
   ]
+
+  const handleLogout = () => {
+    logoutUser()
+    setSession(null)
+    router.push('/')
+  }
 
   return (
     <nav
@@ -62,6 +88,37 @@ export default function Navigation() {
                 {item.name}
               </Link>
             ))}
+
+            {/* Auth Links */}
+            {session ? (
+              <>
+                <Link
+                  href="/account"
+                  className="flex items-center gap-2 text-platinum hover:text-accent-gold transition-colors font-medium text-sm"
+                >
+                  <User className="w-4 h-4" />
+                  {session.name}
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/50 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors font-medium text-sm"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 text-platinum hover:text-accent-gold transition-colors font-medium text-sm"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Login
+                </Link>
+              </>
+            )}
+
             <Link href="/levels/level-1" className="btn-primary">
               Start Learning
             </Link>
@@ -103,6 +160,56 @@ export default function Navigation() {
                 {item.name}
               </Link>
             ))}
+
+            {/* Mobile Auth Section */}
+            {session ? (
+              <>
+                <div className="px-4 pt-4 pb-2 border-t border-royal-green/30">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Account</p>
+                </div>
+                <Link
+                  href="/account"
+                  className="flex items-center gap-2 px-4 py-2 text-platinum hover:text-accent-gold hover:bg-royal-green hover:bg-opacity-20 transition-all"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <User className="w-4 h-4" />
+                  My Account
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout()
+                    setIsOpen(false)
+                  }}
+                  className="w-full mx-4 mt-2 flex items-center justify-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/50 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="px-4 pt-4 pb-2 border-t border-royal-green/30">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Account</p>
+                </div>
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 px-4 py-2 text-platinum hover:text-accent-gold hover:bg-royal-green hover:bg-opacity-20 transition-all"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <LogIn className="w-4 h-4" />
+                  Sign In
+                </Link>
+                <Link
+                  href="/register"
+                  className="flex items-center gap-2 px-4 py-2 text-platinum hover:text-accent-gold hover:bg-royal-green hover:bg-opacity-20 transition-all"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <User className="w-4 h-4" />
+                  Create Account
+                </Link>
+              </>
+            )}
+
             <div className="px-4 mt-4">
               <Link
                 href="/levels/level-1"
