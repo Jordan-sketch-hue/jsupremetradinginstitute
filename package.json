@@ -1,7 +1,7 @@
 {
-  "name": "j-supreme-market-institute",
+  "name": "j-supreme-trading-institute",
   "version": "1.0.0",
-  "description": "Royal Flow Markets - Elite Trading Education Platform",
+  "description": "J Supreme Trading Institute - Elite Trading Education Platform",
   "private": true,
   "scripts": {
     "dev": "next dev",
