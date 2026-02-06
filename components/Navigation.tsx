@@ -60,7 +60,7 @@ export default function Navigation() {
 
   return (
     <nav
-      className={`fixed w-full z-50 transition-all duration-300 ${
+      className={`fixed top-12 w-full z-40 transition-all duration-300 ${
         scrolled ? 'bg-matte-black bg-opacity-95 backdrop-blur-lg shadow-lg' : 'bg-transparent'
       }`}
     >

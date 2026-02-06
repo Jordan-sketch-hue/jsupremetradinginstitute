@@ -22,8 +22,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="scroll-smooth">
       <body className={inter.className}>
-        <Navigation />
         <MarketTicker />
+        <Navigation />
         <main className="min-h-screen pt-32 bg-matte-black">{children}</main>
         <Footer />
         <ChatBot />

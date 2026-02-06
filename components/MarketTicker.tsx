@@ -50,8 +50,8 @@ export default function MarketTicker() {
   }, [])
 
   return (
-    <div className="fixed top-20 left-0 right-0 z-40 bg-gradient-to-r from-matte-black via-royal-green to-matte-black text-white py-3 overflow-hidden border-b border-royal-green/20">
-      <div className="flex items-center space-x-8 px-4 whitespace-nowrap">
+    <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-matte-black via-royal-green to-matte-black text-white h-12 overflow-hidden border-b border-royal-green/20">
+      <div className="h-full flex items-center space-x-8 px-4 whitespace-nowrap">
         <div className="flex items-center space-x-2 font-bold text-sm">
           <TrendingUp className="w-4 h-4" />
           <span>LIVE MARKETS</span>
