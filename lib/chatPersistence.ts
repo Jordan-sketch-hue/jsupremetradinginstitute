@@ -22,12 +22,14 @@ export interface ChatSession {
 const STORAGE_KEY = 'jsupreme_chat_history'
 const MAX_SESSIONS = 10 // Keep last 10 sessions
 const MAX_MESSAGES_PER_SESSION = 50
+const isBrowser = typeof window !== 'undefined' && typeof localStorage !== 'undefined'
 
 /**
  * Get all chat sessions from localStorage
  */
 export function getAllChatSessions(): ChatSession[] {
   try {
+    if (!isBrowser) return []
     const stored = localStorage.getItem(STORAGE_KEY)
     if (!stored) return []
     const sessions = JSON.parse(stored) as ChatSession[]
@@ -43,6 +45,7 @@ export function getAllChatSessions(): ChatSession[] {
  */
 export function saveChatSession(session: ChatSession): void {
   try {
+    if (!isBrowser) return
     let sessions = getAllChatSessions()
 
     // Update or add session
@@ -116,6 +119,7 @@ export function addMessageToSession(sessionId: string, message: Message): ChatSe
  */
 export function deleteChatSession(sessionId: string): void {
   try {
+    if (!isBrowser) return
     let sessions = getAllChatSessions()
     sessions = sessions.filter(s => s.id !== sessionId)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions))
@@ -129,6 +133,7 @@ export function deleteChatSession(sessionId: string): void {
  */
 export function clearAllChatSessions(): void {
   try {
+    if (!isBrowser) return
     localStorage.removeItem(STORAGE_KEY)
   } catch (error) {
     console.error('Error clearing chat sessions:', error)
