@@ -38,11 +38,41 @@ export default function LearningPathPage() {
         },
       ],
       lessons: [
-        { id: 1, title: 'What Moves Markets', type: 'reading', duration: '15 min' },
-        { id: 2, title: 'Market Participants', type: 'reading', duration: '20 min' },
-        { id: 3, title: 'Liquidity Basics', type: 'reading', duration: '15 min' },
-        { id: 4, title: 'Trading Psychology Foundation', type: 'interactive', duration: '25 min' },
-        { id: 5, title: 'Level 1 Assessment', type: 'quiz', duration: '15 min' },
+        {
+          id: 1,
+          title: 'What Moves Markets',
+          type: 'reading',
+          duration: '15 min',
+          link: 'https://www.investopedia.com/articles/forex/08/forex-trading-factors.asp',
+        },
+        {
+          id: 2,
+          title: 'Market Participants',
+          type: 'reading',
+          duration: '20 min',
+          link: 'https://www.bis.org/publ/rpfx19.htm',
+        },
+        {
+          id: 3,
+          title: 'Liquidity Basics',
+          type: 'reading',
+          duration: '15 min',
+          link: 'https://www.cmegroup.com/education/courses/introduction-to-futures/liquidity.html',
+        },
+        {
+          id: 4,
+          title: 'Trading Psychology Foundation',
+          type: 'interactive',
+          duration: '25 min',
+          link: '/courses/trading-psychology',
+        },
+        {
+          id: 5,
+          title: 'Level 1 Assessment',
+          type: 'quiz',
+          duration: '15 min',
+          link: '/dashboard',
+        },
       ],
     },
     {
@@ -74,11 +104,41 @@ export default function LearningPathPage() {
         },
       ],
       lessons: [
-        { id: 6, title: 'Trend Identification', type: 'video', duration: '18 min' },
-        { id: 7, title: 'Structure Breaks', type: 'video', duration: '22 min' },
-        { id: 8, title: 'Timeframe Stacking', type: 'interactive', duration: '30 min' },
-        { id: 9, title: 'Higher High/Lower Low Patterns', type: 'reading', duration: '20 min' },
-        { id: 10, title: 'Level 2 Assessment', type: 'quiz', duration: '20 min' },
+        {
+          id: 6,
+          title: 'Trend Identification',
+          type: 'video',
+          duration: '18 min',
+          link: 'https://www.cftc.gov/LearnAndProtect/EducationCenter/index.htm',
+        },
+        {
+          id: 7,
+          title: 'Structure Breaks',
+          type: 'video',
+          duration: '22 min',
+          link: 'https://www.tradingview.com/ideas/marketstructure/',
+        },
+        {
+          id: 8,
+          title: 'Timeframe Stacking',
+          type: 'interactive',
+          duration: '30 min',
+          link: 'https://www.babypips.com/learn/forex/multiple-time-frame-analysis',
+        },
+        {
+          id: 9,
+          title: 'Higher High/Lower Low Patterns',
+          type: 'reading',
+          duration: '20 min',
+          link: 'https://www.tradingview.com/ideas/marketstructure/',
+        },
+        {
+          id: 10,
+          title: 'Level 2 Assessment',
+          type: 'quiz',
+          duration: '20 min',
+          link: '/dashboard',
+        },
       ],
     },
     {
@@ -110,11 +170,41 @@ export default function LearningPathPage() {
         },
       ],
       lessons: [
-        { id: 11, title: 'Order Block Identification', type: 'video', duration: '20 min' },
-        { id: 12, title: 'Mitigation Theory', type: 'reading', duration: '20 min' },
-        { id: 13, title: 'Institutional Footprints', type: 'video', duration: '20 min' },
-        { id: 14, title: 'Unmitigated vs Mitigated', type: 'interactive', duration: '25 min' },
-        { id: 15, title: 'Level 3 Assessment', type: 'quiz', duration: '25 min' },
+        {
+          id: 11,
+          title: 'Order Block Identification',
+          type: 'video',
+          duration: '20 min',
+          link: 'https://www.tradingview.com/ideas/orderblock/',
+        },
+        {
+          id: 12,
+          title: 'Mitigation Theory',
+          type: 'reading',
+          duration: '20 min',
+          link: 'https://www.tradingview.com/ideas/orderblock/',
+        },
+        {
+          id: 13,
+          title: 'Institutional Footprints',
+          type: 'video',
+          duration: '20 min',
+          link: 'https://www.cmegroup.com/education/courses/understanding-order-flow.html',
+        },
+        {
+          id: 14,
+          title: 'Unmitigated vs Mitigated',
+          type: 'interactive',
+          duration: '25 min',
+          link: 'https://www.tradingview.com/ideas/orderblock/',
+        },
+        {
+          id: 15,
+          title: 'Level 3 Assessment',
+          type: 'quiz',
+          duration: '25 min',
+          link: '/dashboard',
+        },
       ],
     },
     {
@@ -141,11 +231,41 @@ export default function LearningPathPage() {
         },
       ],
       lessons: [
-        { id: 16, title: 'Stop Hunts', type: 'video', duration: '18 min' },
-        { id: 17, title: 'Fake Breakouts', type: 'video', duration: '18 min' },
-        { id: 18, title: 'Smart Money Traps', type: 'reading', duration: '20 min' },
-        { id: 19, title: 'Liquidity Sweeps', type: 'interactive', duration: '25 min' },
-        { id: 20, title: 'Level 4 Assessment', type: 'quiz', duration: '20 min' },
+        {
+          id: 16,
+          title: 'Stop Hunts',
+          type: 'video',
+          duration: '18 min',
+          link: 'https://www.cmegroup.com/education/courses/trade-types/stop-orders.html',
+        },
+        {
+          id: 17,
+          title: 'Fake Breakouts',
+          type: 'video',
+          duration: '18 min',
+          link: 'https://www.sec.gov/market-structure',
+        },
+        {
+          id: 18,
+          title: 'Smart Money Traps',
+          type: 'reading',
+          duration: '20 min',
+          link: 'https://www.tradingview.com/ideas/liquidity/',
+        },
+        {
+          id: 19,
+          title: 'Liquidity Sweeps',
+          type: 'interactive',
+          duration: '25 min',
+          link: 'https://www.tradingview.com/ideas/liquidity/',
+        },
+        {
+          id: 20,
+          title: 'Level 4 Assessment',
+          type: 'quiz',
+          duration: '20 min',
+          link: '/dashboard',
+        },
       ],
     },
     {
@@ -177,11 +297,41 @@ export default function LearningPathPage() {
         },
       ],
       lessons: [
-        { id: 21, title: 'RSI Institutional Usage', type: 'video', duration: '20 min' },
-        { id: 22, title: 'ATR Volatility Logic', type: 'reading', duration: '15 min' },
-        { id: 23, title: 'Divergence Patterns', type: 'video', duration: '20 min' },
-        { id: 24, title: 'Confirmation Stacking', type: 'interactive', duration: '25 min' },
-        { id: 25, title: 'Level 5 Assessment', type: 'quiz', duration: '20 min' },
+        {
+          id: 21,
+          title: 'RSI Institutional Usage',
+          type: 'video',
+          duration: '20 min',
+          link: 'https://www.investopedia.com/terms/r/rsi.asp',
+        },
+        {
+          id: 22,
+          title: 'ATR Volatility Logic',
+          type: 'reading',
+          duration: '15 min',
+          link: 'https://www.investopedia.com/terms/a/atr.asp',
+        },
+        {
+          id: 23,
+          title: 'Divergence Patterns',
+          type: 'video',
+          duration: '20 min',
+          link: 'https://www.tradingview.com/ideas/divergence/',
+        },
+        {
+          id: 24,
+          title: 'Confirmation Stacking',
+          type: 'interactive',
+          duration: '25 min',
+          link: '/dashboard',
+        },
+        {
+          id: 25,
+          title: 'Level 5 Assessment',
+          type: 'quiz',
+          duration: '20 min',
+          link: '/dashboard',
+        },
       ],
     },
     {
@@ -213,11 +363,41 @@ export default function LearningPathPage() {
         },
       ],
       lessons: [
-        { id: 26, title: 'Micro Structure', type: 'video', duration: '20 min' },
-        { id: 27, title: 'Timing Models', type: 'reading', duration: '20 min' },
-        { id: 28, title: 'Multi-Timeframe Entries', type: 'interactive', duration: '30 min' },
-        { id: 29, title: 'High Probability Setups', type: 'video', duration: '25 min' },
-        { id: 30, title: 'Level 6 Assessment', type: 'quiz', duration: '20 min' },
+        {
+          id: 26,
+          title: 'Micro Structure',
+          type: 'video',
+          duration: '20 min',
+          link: 'https://www.cmegroup.com/education/courses/introduction-to-futures/price-action.html',
+        },
+        {
+          id: 27,
+          title: 'Timing Models',
+          type: 'reading',
+          duration: '20 min',
+          link: 'https://www.finra.org/investors/learn-to-invest/basics/order-types',
+        },
+        {
+          id: 28,
+          title: 'Multi-Timeframe Entries',
+          type: 'interactive',
+          duration: '30 min',
+          link: 'https://www.tradingview.com/ideas/entries/',
+        },
+        {
+          id: 29,
+          title: 'High Probability Setups',
+          type: 'video',
+          duration: '25 min',
+          link: '/dashboard',
+        },
+        {
+          id: 30,
+          title: 'Level 6 Assessment',
+          type: 'quiz',
+          duration: '20 min',
+          link: '/dashboard',
+        },
       ],
     },
     {
@@ -249,11 +429,41 @@ export default function LearningPathPage() {
         },
       ],
       lessons: [
-        { id: 31, title: 'Position Sizing', type: 'reading', duration: '20 min' },
-        { id: 32, title: 'Emotional Discipline', type: 'interactive', duration: '25 min' },
-        { id: 33, title: 'Probability Thinking', type: 'video', duration: '20 min' },
-        { id: 34, title: 'Trade Management', type: 'reading', duration: '20 min' },
-        { id: 35, title: 'Level 7 Assessment', type: 'quiz', duration: '20 min' },
+        {
+          id: 31,
+          title: 'Position Sizing',
+          type: 'reading',
+          duration: '20 min',
+          link: '/courses/account-management',
+        },
+        {
+          id: 32,
+          title: 'Emotional Discipline',
+          type: 'interactive',
+          duration: '25 min',
+          link: '/courses/trading-psychology',
+        },
+        {
+          id: 33,
+          title: 'Probability Thinking',
+          type: 'video',
+          duration: '20 min',
+          link: '/courses/trading-psychology',
+        },
+        {
+          id: 34,
+          title: 'Trade Management',
+          type: 'reading',
+          duration: '20 min',
+          link: '/courses/account-management',
+        },
+        {
+          id: 35,
+          title: 'Level 7 Assessment',
+          type: 'quiz',
+          duration: '20 min',
+          link: '/dashboard',
+        },
       ],
     },
   ]
@@ -428,7 +638,9 @@ export default function LearningPathPage() {
                         Start This Level
                       </h3>
                       <a
-                        href={`#level-${level.id}`}
+                        href={level.resources[0]?.url || `/learning-path#level-${level.id}`}
+                        target={level.resources[0]?.url ? '_blank' : undefined}
+                        rel={level.resources[0]?.url ? 'noopener noreferrer' : undefined}
                         className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-royal-green text-white text-sm font-semibold hover:bg-royal-emerald transition-colors"
                       >
                         Start Level {level.id}
@@ -448,7 +660,16 @@ export default function LearningPathPage() {
                       return (
                         <button
                           key={lesson.id}
-                          onClick={() => !locked && toggleLesson(lesson.id)}
+                          onClick={() => {
+                            if (locked) return
+                            toggleLesson(lesson.id)
+                            if (lesson.link) {
+                              window.open(
+                                lesson.link,
+                                lesson.link.startsWith('http') ? '_blank' : '_self'
+                              )
+                            }
+                          }}
                           disabled={locked}
                           className={`w-full flex items-center justify-between p-4 rounded-xl transition-all ${
                             completed
