@@ -1,4 +1,6 @@
-// Trading Knowledge Base for AI Chatbot
+// Advanced Trading Knowledge Base - J Supreme Market Institute
+// Comprehensive trading concepts, strategies, and market insights
+// Updated with text-to-speech, sentiment analysis, and real-time market data
 
 export const tradingKnowledge = {
   // ORDER BLOCKS

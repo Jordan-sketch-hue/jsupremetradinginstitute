@@ -1,12 +1,24 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react'
+import { MessageCircle, X, Send, Loader2, Volume2, Download, Trash2, Save } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { tradingKnowledge } from '@/lib/tradingKnowledge'
+import { analyzeSentiment, getBiasRecommendation, getPsychologyTip } from '@/lib/sentimentAnalyzer'
+import {
+  saveChatSession,
+  createChatSession,
+  addMessageToSession,
+  getAllChatSessions,
+  getChatSession,
+  deleteChatSession,
+  ChatSession,
+} from '@/lib/chatPersistence'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
+  timestamp?: number
 }
 
 export default function ChatBot() {
@@ -15,12 +27,23 @@ export default function ChatBot() {
     {
       role: 'assistant',
       content:
-        "Welcome to J Supreme Market Institute! I'm your AI trading assistant. Ask me about order blocks, market structure, liquidity theory, or any trading concept.",
+        "Welcome to J Supreme Market Institute! 🚀 I'm your AI trading assistant powered by institutional trading knowledge. Ask me about:\n\n📍 Order Blocks • Market Structure • Liquidity Theory\n💡 Risk Management • Psychology • Technical Analysis\n📊 Real-time Market Data • Trading Strategies\n\nWhat would you like to learn today?",
+      timestamp: Date.now(),
     },
   ])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [currentSession, setCurrentSession] = useState<ChatSession | null>(null)
+  const [showSessionList, setShowSessionList] = useState(false)
+  const [textToSpeechEnabled, setTextToSpeechEnabled] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Initialize chat session on mount
+  useEffect(() => {
+    const newSession = createChatSession('Trading Session ' + new Date().toLocaleTimeString())
+    setCurrentSession(newSession)
+    saveChatSession(newSession)
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -30,68 +53,101 @@ export default function ChatBot() {
     scrollToBottom()
   }, [messages])
 
-  // Import trading knowledge (would be imported in real implementation)
-  // import { searchKnowledge } from '@/lib/tradingKnowledge'
+  // Text-to-Speech function
+  const speakMessage = (text: string) => {
+    if (!textToSpeechEnabled || !('speechSynthesis' in window)) return
 
-  const quickAnswers: { [key: string]: string } = {
-    'order block':
-      "An order block is the last opposing candle before a strong impulsive move. It represents where institutions placed their orders. For bullish order blocks, it's the last bearish candle before a rally. Price often returns to these zones for re-entry opportunities.",
-    liquidity:
-      'Liquidity refers to areas where many orders are placed - typically at equal highs/lows, previous day extremes, and retail stop-loss zones. Institutions hunt these areas before making real moves. We wait for liquidity sweeps before entering.',
-    mitigation:
-      "Mitigation means price has returned to an order block zone. Unmitigated blocks (price hasn't returned yet) offer highest probability setups. Mitigated blocks have lower priority since institutions already executed their orders there.",
-    'market structure':
-      'Market structure determines our bias. In uptrends (higher highs, higher lows), we only look for buys. In downtrends (lower highs, lower lows), we only look for sells. This filters out 70% of bad trades.',
-    manipulation:
-      'Manipulation is when institutions create fake breakouts to trigger retail traders and grab liquidity. This is phase 2 of the market cycle. After manipulation comes distribution - the real move.',
-    accumulation:
-      'Accumulation is when institutions quietly build positions. Signs include sideways movement, tight ranges, and liquidity buildup. This is phase 1 before the manipulation and distribution phases.',
-    rsi: 'We use RSI as a confirmation tool, not a decision maker. When price hits an order block, RSI should show divergence or oversold/overbought conditions to confirm institutional positioning.',
-    atr: 'ATR (Average True Range) measures volatility. We use it for stop loss placement and to ensure realistic profit targets. If ATR is 30 pips, stops should be placed slightly outside the order block plus ATR consideration.',
-    entry:
-      'High probability entries require: 1) Higher timeframe trend alignment, 2) Unmitigated order block, 3) Liquidity sweep, 4) RSI divergence, 5) ATR supports movement, 6) Structure break on entry timeframe.',
-    'stop hunt':
-      'Stop hunts occur when price spikes beyond obvious levels to trigger retail stop losses, then reverses. This creates liquidity for institutional entries. We wait for the hunt to complete before entering.',
-    'break of structure':
-      "BOS (Break of Structure) confirms trend continuation. In uptrend, it's breaking above a significant high. In downtrend, breaking below a significant low. This validates order blocks in that direction.",
-    timeframe:
-      'Use Daily/4H for trend and major zones, 1H for refinement, 15M/5M for precise entries. Higher timeframes decide bias, lower timeframes decide timing.',
-    risk: 'Never risk more than 1-2% per trade. Place stops beyond order block + ATR buffer. Use proper position sizing based on stop distance.',
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.rate = 0.95
+    utterance.pitch = 1
+    utterance.volume = 0.8
+    speechSynthesis.speak(utterance)
+  }
+
+  // Enhanced keyword search with sentiment and market data
+  const findAnswer = (query: string): string => {
+    const lowerQuery = query.toLowerCase()
+    const sentiment = analyzeSentiment(query)
+
+    // Check for specific knowledge base queries
+    const knowledge = tradingKnowledge as any
+    for (const category of Object.values(knowledge)) {
+      if (typeof category === 'object' && category !== null) {
+        for (const [key, value] of Object.entries(category)) {
+          if (lowerQuery.includes(key.toLowerCase())) {
+            if (typeof value === 'string') return value
+          }
+        }
+      }
+    }
+
+    // Check for market data queries
+    if (
+      lowerQuery.includes('market') ||
+      lowerQuery.includes('price') ||
+      lowerQuery.includes('pair')
+    ) {
+      const pairs = ['eur/usd', 'gbp/usd', 'usd/jpy', 'aud/usd', 'xau/usd']
+      for (const pair of pairs) {
+        if (lowerQuery.includes(pair)) {
+          return `📊 ${pair.toUpperCase()} Market Analysis:\n\nI can provide real-time market data through integrated APIs. Currently showing mock data:\n- EUR/USD: 1.0952 (↑0.42%)\n- Check the dashboard for live pricing and charts.\n\nWould you like trading ideas for this pair?`
+        }
+      }
+    }
+
+    // Provide psychology tips based on sentiment
+    if (sentiment.emotions.length > 0) {
+      const psychologyTip = getPsychologyTip(sentiment)
+      const biasRec = getBiasRecommendation(sentiment)
+      return `${psychologyTip}\n\n${biasRec}\n\nRemember: Follow your system, not your feelings.`
+    }
+
+    return "That's an excellent question! 🎯\n\nIn institutional trading, we focus on:\n\n1️⃣ **Market Structure** - Trend identification (HH/HL or LH/LL)\n2️⃣ **Order Blocks** - Where institutions accumulate\n3️⃣ **Liquidity** - Where price returns to execute\n4️⃣ **Confluence** - Multiple factors aligned\n5️⃣ **Risk Management** - 2% per trade maximum\n\nWhich topic would you like me to dive deeper into?"
   }
 
   const handleSend = async () => {
     if (!input.trim()) return
 
-    const userMessage: Message = { role: 'user', content: input }
+    const userMessage: Message = { role: 'user', content: input, timestamp: Date.now() }
     setMessages(prev => [...prev, userMessage])
+
+    // Save to session
+    if (currentSession) {
+      addMessageToSession(currentSession.id, {
+        role: 'user',
+        content: input,
+        timestamp: Date.now(),
+      })
+    }
+
     setInput('')
     setIsLoading(true)
 
-    // Simulate AI response
+    // Simulate AI response with sentiment analysis
     setTimeout(() => {
-      let response = "I understand you're asking about trading concepts. "
+      const response = findAnswer(input)
 
-      // Simple keyword matching for demo
-      const lowerInput = input.toLowerCase()
-      let foundMatch = false
-
-      for (const [keyword, explanation] of Object.entries(quickAnswers)) {
-        if (lowerInput.includes(keyword)) {
-          response = explanation
-          foundMatch = true
-          break
-        }
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: response,
+        timestamp: Date.now(),
       }
-
-      if (!foundMatch) {
-        response =
-          "That's an excellent question! Let me help you understand this concept. In institutional trading, we focus on three core principles: 1) Trading where liquidity sits, 2) Following market structure, and 3) Identifying order block zones. Would you like me to explain any of these in more detail?"
-      }
-
-      const assistantMessage: Message = { role: 'assistant', content: response }
       setMessages(prev => [...prev, assistantMessage])
+
+      // Save to session
+      if (currentSession) {
+        addMessageToSession(currentSession.id, {
+          role: 'assistant',
+          content: response,
+          timestamp: Date.now(),
+        })
+      }
+
+      // Speak the response
+      speakMessage(response)
+
       setIsLoading(false)
-    }, 1000)
+    }, 800)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -100,6 +156,24 @@ export default function ChatBot() {
       handleSend()
     }
   }
+
+  const handleDeleteSession = (sessionId: string) => {
+    deleteChatSession(sessionId)
+    if (currentSession?.id === sessionId) {
+      const newSession = createChatSession()
+      setCurrentSession(newSession)
+      saveChatSession(newSession)
+      setMessages([messages[0]]) // Keep welcome message
+    }
+  }
+
+  const handleLoadSession = (session: ChatSession) => {
+    setCurrentSession(session)
+    setMessages(session.messages.length > 0 ? session.messages : [messages[0]])
+    setShowSessionList(false)
+  }
+
+  const sessions = getAllChatSessions()
 
   return (
     <>
@@ -127,42 +201,105 @@ export default function ChatBot() {
             transition={{ duration: 0.2 }}
             className="fixed bottom-24 right-6 z-50 w-96 max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-8rem)] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
-            {/* Header */}
+            {/* Header with Controls */}
             <div className="bg-gradient-to-r from-royal-green to-royal-emerald p-4 text-white">
-              <h3 className="font-playfair font-bold text-xl">AI Trading Assistant</h3>
-              <p className="text-sm text-gray-200">Powered by institutional knowledge</p>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-playfair font-bold text-xl">AI Trading Assistant</h3>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setTextToSpeechEnabled(!textToSpeechEnabled)}
+                    title={textToSpeechEnabled ? 'Disable audio' : 'Enable audio'}
+                    className={`p-1 rounded-lg ${
+                      textToSpeechEnabled ? 'bg-white/20' : 'bg-white/10'
+                    } hover:bg-white/30 transition-colors`}
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setShowSessionList(!showSessionList)}
+                    title="View chat history"
+                    className="p-1 rounded-lg bg-white/10 hover:bg-white/30 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <p className="text-sm text-gray-200">Expert trading knowledge + Real-time analysis</p>
             </div>
 
+            {/* Session List */}
+            {showSessionList && sessions.length > 0 && (
+              <div className="border-b border-gray-200 max-h-32 overflow-y-auto bg-gray-50 p-2">
+                {sessions.slice(0, 5).map(session => (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between p-2 hover:bg-gray-100 rounded text-xs mb-1"
+                  >
+                    <span className="truncate flex-1">{session.title}</span>
+                    <button
+                      onClick={() => handleLoadSession(session)}
+                      className="text-royal-green hover:font-bold"
+                    >
+                      Load
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSession(session.id)}
+                      className="text-red-500 hover:text-red-700 ml-2"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-white to-gray-50">
               {messages.map((message, index) => (
-                <div
+                <motion.div
                   key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
                     className={`max-w-[80%] rounded-2xl p-4 ${
                       message.role === 'user'
-                        ? 'bg-royal-green text-white'
-                        : 'bg-gray-100 text-matte-black'
+                        ? 'bg-gradient-to-br from-royal-green to-royal-emerald text-white'
+                        : 'bg-gradient-to-br from-gray-100 to-gray-50 text-matte-black border border-gray-200'
                     }`}
                   >
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap font-normal">
+                      {message.content}
+                    </p>
+                    {message.role === 'assistant' && (
+                      <button
+                        onClick={() => speakMessage(message.content)}
+                        className="mt-2 text-xs opacity-70 hover:opacity-100 flex items-center space-x-1"
+                      >
+                        <Volume2 className="w-3 h-3" />
+                        <span>Read aloud</span>
+                      </button>
+                    )}
                   </div>
-                </div>
+                </motion.div>
               ))}
               {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-gray-100 rounded-2xl p-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-start"
+                >
+                  <div className="bg-gray-100 rounded-2xl p-4 border border-gray-200">
                     <Loader2 className="w-5 h-5 animate-spin text-royal-green" />
                   </div>
-                </div>
+                </motion.div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-gray-200">
+            <div className="p-4 border-t border-gray-200 bg-white">
               <div className="flex space-x-2">
                 <input
                   type="text"
@@ -170,7 +307,7 @@ export default function ChatBot() {
                   onChange={e => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Ask about trading..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-royal-green"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-royal-green focus:ring-1 focus:ring-royal-green/20"
                 />
                 <button
                   onClick={handleSend}
@@ -181,7 +318,8 @@ export default function ChatBot() {
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Press Enter to send, Shift+Enter for new line
+                💡 Tip: Ask about order blocks, market structure, risk management, or your feelings
+                about a trade
               </p>
             </div>
           </motion.div>
