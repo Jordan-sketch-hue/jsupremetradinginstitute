@@ -50,7 +50,7 @@ export default function MarketTicker() {
   }, [])
 
   return (
-    <div className="bg-gradient-to-r from-matte-black via-royal-green to-matte-black text-white py-3 overflow-hidden">
+    <div className="relative z-40 bg-gradient-to-r from-matte-black via-royal-green to-matte-black text-white py-3 overflow-hidden border-b border-royal-green/20">
       <div className="flex items-center space-x-8 px-4 whitespace-nowrap">
         <div className="flex items-center space-x-2 font-bold text-sm">
           <TrendingUp className="w-4 h-4" />
