@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { ArrowRight, TrendingUp, BarChart3, Brain } from 'lucide-react'
+import Link from 'next/link'
 import VoiceInput from './VoiceInput'
 
 export default function Hero() {
@@ -23,7 +24,7 @@ export default function Hero() {
         transition={{
           duration: 6,
           repeat: Infinity,
-          ease: "easeInOut"
+          ease: 'easeInOut',
         }}
       />
       <motion.div
@@ -35,7 +36,7 @@ export default function Hero() {
         transition={{
           duration: 8,
           repeat: Infinity,
-          ease: "easeInOut"
+          ease: 'easeInOut',
         }}
       />
 
@@ -54,7 +55,9 @@ export default function Hero() {
             className="inline-flex items-center space-x-2 bg-royal-green bg-opacity-30 backdrop-blur-lg px-6 py-2 rounded-full border border-royal-emerald mb-8"
           >
             <TrendingUp className="w-5 h-5 text-accent-gold" />
-            <span className="text-platinum font-semibold">Elite Institutional Trading Education</span>
+            <span className="text-platinum font-semibold">
+              Elite Institutional Trading Education
+            </span>
           </motion.div>
 
           {/* Main Heading */}
@@ -64,8 +67,7 @@ export default function Hero() {
             transition={{ delay: 0.4, duration: 0.8 }}
             className="text-5xl md:text-7xl font-playfair font-bold text-white mb-6 leading-tight"
           >
-            Trade Where{' '}
-            <span className="text-gradient">Institutions</span>
+            Trade Where <span className="text-gradient">Institutions</span>
             <br />
             Move Money
           </motion.h1>
@@ -106,14 +108,20 @@ export default function Hero() {
             transition={{ delay: 0.9, duration: 0.8 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <button className="btn-primary flex items-center space-x-2 text-lg px-8 py-4">
+            <Link
+              href="/learning-path#level-1"
+              className="btn-primary flex items-center space-x-2 text-lg px-8 py-4"
+            >
               <span>Begin Your Journey</span>
               <ArrowRight className="w-5 h-5" />
-            </button>
-            <button className="btn-secondary flex items-center space-x-2 text-lg px-8 py-4">
+            </Link>
+            <Link
+              href="/guides/tradingview"
+              className="btn-secondary flex items-center space-x-2 text-lg px-8 py-4"
+            >
               <span>Watch Free Lesson</span>
               <BarChart3 className="w-5 h-5" />
-            </button>
+            </Link>
           </motion.div>
 
           {/* Stats */}

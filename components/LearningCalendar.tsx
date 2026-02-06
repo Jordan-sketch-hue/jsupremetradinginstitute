@@ -23,37 +23,35 @@ interface TopicDay {
 export default function LearningCalendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<TopicDay | null>(null)
-
-  // Sample 30-day curriculum structure
-  const curriculum: TopicDay[] = [
+  const [curriculum, setCurriculum] = useState<TopicDay[]>([
     // Week 1: Foundations
     {
       day: 1,
       topic: 'What Moves Markets',
       category: 'Foundations',
       completed: true,
-      courseLink: '/learning-path#level1',
+      courseLink: '/learning-path#level-1',
     },
     {
       day: 2,
       topic: 'Market Participants',
       category: 'Foundations',
       completed: true,
-      courseLink: '/learning-path#level1',
+      courseLink: '/learning-path#level-1',
     },
     {
       day: 3,
       topic: 'Liquidity Basics',
       category: 'Foundations',
       completed: true,
-      courseLink: '/learning-path#level1',
+      courseLink: '/learning-path#level-1',
     },
     {
       day: 4,
       topic: 'Market Structure Intro',
       category: 'Foundations',
       completed: true,
-      courseLink: '/learning-path#level1',
+      courseLink: '/learning-path#level-1',
     },
     {
       day: 5,
@@ -83,35 +81,35 @@ export default function LearningCalendar() {
       topic: 'Higher Highs & Lows',
       category: 'Structure',
       completed: false,
-      courseLink: '/learning-path#level2',
+      courseLink: '/learning-path#level-2',
     },
     {
       day: 9,
       topic: 'Break of Structure',
       category: 'Structure',
       completed: false,
-      courseLink: '/learning-path#level2',
+      courseLink: '/learning-path#level-2',
     },
     {
       day: 10,
       topic: 'Change of Character',
       category: 'Structure',
       completed: false,
-      courseLink: '/learning-path#level2',
+      courseLink: '/learning-path#level-2',
     },
     {
       day: 11,
       topic: 'Trend Confirmation',
       category: 'Structure',
       completed: false,
-      courseLink: '/learning-path#level2',
+      courseLink: '/learning-path#level-2',
     },
     {
       day: 12,
       topic: 'Multi-Timeframe Analysis',
       category: 'Structure',
       completed: false,
-      courseLink: '/learning-path#level2',
+      courseLink: '/learning-path#level-2',
     },
     {
       day: 13,
@@ -134,28 +132,28 @@ export default function LearningCalendar() {
       topic: 'Order Block Theory',
       category: 'Order Blocks',
       completed: false,
-      courseLink: '/learning-path#level3',
+      courseLink: '/learning-path#level-3',
     },
     {
       day: 16,
       topic: 'Valid OB Requirements',
       category: 'Order Blocks',
       completed: false,
-      courseLink: '/learning-path#level3',
+      courseLink: '/learning-path#level-3',
     },
     {
       day: 17,
       topic: 'Mitigation Zones',
       category: 'Order Blocks',
       completed: false,
-      courseLink: '/learning-path#level3',
+      courseLink: '/learning-path#level-3',
     },
     {
       day: 18,
       topic: 'OB Probability Scoring',
       category: 'Order Blocks',
       completed: false,
-      courseLink: '/learning-path#level3',
+      courseLink: '/learning-path#level-3',
     },
     {
       day: 19,
@@ -185,56 +183,56 @@ export default function LearningCalendar() {
       topic: 'Liquidity Sweeps',
       category: 'Smart Money',
       completed: false,
-      courseLink: '/learning-path#level4',
+      courseLink: '/learning-path#level-4',
     },
     {
       day: 23,
       topic: 'Stop Hunts',
       category: 'Smart Money',
       completed: false,
-      courseLink: '/learning-path#level4',
+      courseLink: '/learning-path#level-4',
     },
     {
       day: 24,
       topic: 'Market Manipulation',
       category: 'Smart Money',
       completed: false,
-      courseLink: '/learning-path#level4',
+      courseLink: '/learning-path#level-4',
     },
     {
       day: 25,
       topic: 'Accumulation Phase',
       category: 'Smart Money',
       completed: false,
-      courseLink: '/learning-path#level4',
+      courseLink: '/learning-path#level-4',
     },
     {
       day: 26,
       topic: 'RSI Confirmation',
       category: 'Indicators',
       completed: false,
-      courseLink: '/learning-path#level5',
+      courseLink: '/learning-path#level-5',
     },
     {
       day: 27,
       topic: 'ATR Risk Management',
       category: 'Risk',
       completed: false,
-      courseLink: '/learning-path#level7',
+      courseLink: '/learning-path#level-7',
     },
     {
       day: 28,
       topic: 'Entry Timing',
       category: 'Execution',
       completed: false,
-      courseLink: '/learning-path#level6',
+      courseLink: '/learning-path#level-6',
     },
     {
       day: 29,
       topic: 'Trading Psychology',
       category: 'Psychology',
       completed: false,
-      courseLink: '/learning-path#level7',
+      courseLink: '/learning-path#level-7',
     },
     {
       day: 30,
@@ -243,7 +241,7 @@ export default function LearningCalendar() {
       completed: false,
       courseLink: '/dashboard',
     },
-  ]
+  ])
 
   const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })
   const daysInMonth = 30 // Simplified for 30-day curriculum
@@ -449,7 +447,17 @@ export default function LearningCalendar() {
                   Go to Course
                 </a>
                 {!selectedDay.completed && (
-                  <button className="px-6 py-3 border-2 border-royal-green text-royal-emerald font-semibold rounded-lg hover:bg-royal-green/20 transition-all">
+                  <button
+                    onClick={() => {
+                      setCurriculum(prev =>
+                        prev.map(item =>
+                          item.day === selectedDay.day ? { ...item, completed: true } : item
+                        )
+                      )
+                      setSelectedDay({ ...selectedDay, completed: true })
+                    }}
+                    className="px-6 py-3 border-2 border-royal-green text-royal-emerald font-semibold rounded-lg hover:bg-royal-green/20 transition-all"
+                  >
                     Mark Complete
                   </button>
                 )}

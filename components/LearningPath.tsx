@@ -10,7 +10,12 @@ export default function LearningPath() {
       level: 1,
       title: 'Market Foundations',
       icon: BookOpen,
-      topics: ['What Moves Markets', 'Market Participants', 'Liquidity Basics', 'Trading Psychology Foundation'],
+      topics: [
+        'What Moves Markets',
+        'Market Participants',
+        'Liquidity Basics',
+        'Trading Psychology Foundation',
+      ],
       duration: '2 weeks',
       color: 'from-royal-green to-royal-emerald',
     },
@@ -18,7 +23,12 @@ export default function LearningPath() {
       level: 2,
       title: 'Market Structure',
       icon: TrendingUp,
-      topics: ['Trend Identification', 'Structure Breaks', 'Timeframe Stacking', 'Higher High/Lower Low Patterns'],
+      topics: [
+        'Trend Identification',
+        'Structure Breaks',
+        'Timeframe Stacking',
+        'Higher High/Lower Low Patterns',
+      ],
       duration: '3 weeks',
       color: 'from-royal-emerald to-accent-gold',
     },
@@ -26,7 +36,12 @@ export default function LearningPath() {
       level: 3,
       title: 'Order Block Mastery',
       icon: LineChart,
-      topics: ['Order Block Identification', 'Mitigation Theory', 'Institutional Footprints', 'Unmitigated vs Mitigated'],
+      topics: [
+        'Order Block Identification',
+        'Mitigation Theory',
+        'Institutional Footprints',
+        'Unmitigated vs Mitigated',
+      ],
       duration: '4 weeks',
       color: 'from-accent-gold to-royal-green',
     },
@@ -42,7 +57,12 @@ export default function LearningPath() {
       level: 5,
       title: 'Indicator Precision',
       icon: Target,
-      topics: ['RSI Institutional Usage', 'ATR Volatility Logic', 'Divergence Patterns', 'Confirmation Stacking'],
+      topics: [
+        'RSI Institutional Usage',
+        'ATR Volatility Logic',
+        'Divergence Patterns',
+        'Confirmation Stacking',
+      ],
       duration: '2 weeks',
       color: 'from-royal-emerald to-royal-green',
     },
@@ -50,7 +70,12 @@ export default function LearningPath() {
       level: 6,
       title: 'Entry Engineering',
       icon: Zap,
-      topics: ['Micro Structure', 'Timing Models', 'Multi-Timeframe Entries', 'High Probability Setups'],
+      topics: [
+        'Micro Structure',
+        'Timing Models',
+        'Multi-Timeframe Entries',
+        'High Probability Setups',
+      ],
       duration: '4 weeks',
       color: 'from-accent-gold to-royal-emerald',
     },
@@ -58,7 +83,12 @@ export default function LearningPath() {
       level: 7,
       title: 'Risk & Psychology',
       icon: Shield,
-      topics: ['Position Sizing', 'Emotional Discipline', 'Probability Thinking', 'Trade Management'],
+      topics: [
+        'Position Sizing',
+        'Emotional Discipline',
+        'Probability Thinking',
+        'Trade Management',
+      ],
       duration: '3 weeks',
       color: 'from-royal-green to-royal-emerald',
     },
@@ -82,7 +112,8 @@ export default function LearningPath() {
           transition={{ delay: 0.2 }}
           className="text-xl text-gray-600 max-w-3xl mx-auto"
         >
-          A structured 7-level system designed to transform you from beginner to institutional-level trader
+          A structured 7-level system designed to transform you from beginner to institutional-level
+          trader
         </motion.p>
       </div>
 
@@ -100,7 +131,9 @@ export default function LearningPath() {
             <div className="flex items-start gap-6">
               {/* Level Number & Icon */}
               <div className="flex-shrink-0">
-                <div className={`w-20 h-20 bg-gradient-to-br ${level.color} rounded-2xl flex items-center justify-center shadow-lg transform hover:rotate-6 hover:scale-110 transition-all duration-300`}>
+                <div
+                  className={`w-20 h-20 bg-gradient-to-br ${level.color} rounded-2xl flex items-center justify-center shadow-lg transform hover:rotate-6 hover:scale-110 transition-all duration-300`}
+                >
                   <level.icon className="w-10 h-10 text-white" />
                 </div>
                 <div className="text-center mt-2">
@@ -129,12 +162,22 @@ export default function LearningPath() {
                 </ul>
 
                 <Link
-                  href={`/learning-path/level-${level.level}`}
+                  href={`/learning-path#level-${level.level}`}
                   className="inline-flex items-center text-royal-green font-semibold hover:text-royal-emerald transition-colors group"
                 >
                   Start Level {level.level}
-                  <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg
+                    className="w-4 h-4 ml-2 transform group-hover:translate-x-2 transition-transform"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </Link>
               </div>
@@ -155,12 +198,10 @@ export default function LearningPath() {
         viewport={{ once: true }}
         className="text-center mt-16"
       >
-        <button className="btn-primary text-lg px-10 py-4">
+        <Link href="/learning-path#level-1" className="btn-primary text-lg px-10 py-4">
           Start Your Journey Now
-        </button>
-        <p className="text-gray-600 mt-4">
-          No credit card required • Free trial available
-        </p>
+        </Link>
+        <p className="text-gray-600 mt-4">No credit card required • Free trial available</p>
       </motion.div>
     </section>
   )

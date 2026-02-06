@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { ArrowRight, Check } from 'lucide-react'
+import Link from 'next/link'
 
 export default function CTASection() {
   const benefits = [
@@ -30,7 +31,7 @@ export default function CTASection() {
         transition={{
           duration: 8,
           repeat: Infinity,
-          ease: "easeInOut"
+          ease: 'easeInOut',
         }}
       />
       <motion.div
@@ -42,7 +43,7 @@ export default function CTASection() {
         transition={{
           duration: 10,
           repeat: Infinity,
-          ease: "easeInOut"
+          ease: 'easeInOut',
         }}
       />
 
@@ -68,8 +69,8 @@ export default function CTASection() {
 
           {/* Description */}
           <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
-            Join hundreds of traders who've transformed their approach to the markets. 
-            Start your journey to institutional-level trading today.
+            Join hundreds of traders who've transformed their approach to the markets. Start your
+            journey to institutional-level trading today.
           </p>
 
           {/* Benefits Grid */}
@@ -91,13 +92,19 @@ export default function CTASection() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <button className="btn-secondary flex items-center space-x-2 text-lg px-10 py-4">
+            <Link
+              href="/learning-path#level-1"
+              className="btn-secondary flex items-center space-x-2 text-lg px-10 py-4"
+            >
               <span>Start Free Trial</span>
               <ArrowRight className="w-5 h-5" />
-            </button>
-            <button className="bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-lg text-white border-2 border-white border-opacity-30 px-10 py-4 rounded-lg font-semibold transition-all duration-300">
+            </Link>
+            <Link
+              href="/pricing"
+              className="bg-white bg-opacity-10 hover:bg-opacity-20 backdrop-blur-lg text-white border-2 border-white border-opacity-30 px-10 py-4 rounded-lg font-semibold transition-all duration-300"
+            >
               View Pricing
-            </button>
+            </Link>
           </div>
 
           {/* Guarantee */}

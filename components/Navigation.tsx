@@ -62,7 +62,9 @@ export default function Navigation() {
                 {item.name}
               </Link>
             ))}
-            <button className="btn-primary">Start Learning</button>
+            <Link href="/learning-path#level-1" className="btn-primary">
+              Start Learning
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -102,7 +104,13 @@ export default function Navigation() {
               </Link>
             ))}
             <div className="px-4 mt-4">
-              <button className="btn-primary w-full">Start Learning</button>
+              <Link
+                href="/learning-path#level-1"
+                className="btn-primary w-full"
+                onClick={() => setIsOpen(false)}
+              >
+                Start Learning
+              </Link>
             </div>
           </div>
         )}

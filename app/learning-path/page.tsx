@@ -725,7 +725,9 @@ export default function LearningPathPage() {
           className="text-center mt-12"
         >
           <p className="text-gray-600 mb-4">Ready to dive deeper?</p>
-          <button className="btn-primary text-lg px-10 py-4">Continue Learning</button>
+          <a href="/calendar" className="btn-primary text-lg px-10 py-4">
+            Continue Learning
+          </a>
         </motion.div>
       </div>
     </div>
