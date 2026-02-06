@@ -62,7 +62,7 @@ export default function Navigation() {
                 {item.name}
               </Link>
             ))}
-            <Link href="/learning-path#level-1" className="btn-primary">
+            <Link href="/levels/level-1" className="btn-primary">
               Start Learning
             </Link>
           </div>
@@ -105,7 +105,7 @@ export default function Navigation() {
             ))}
             <div className="px-4 mt-4">
               <Link
-                href="/learning-path#level-1"
+                href="/levels/level-1"
                 className="btn-primary w-full"
                 onClick={() => setIsOpen(false)}
               >

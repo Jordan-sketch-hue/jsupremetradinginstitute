@@ -109,7 +109,7 @@ export default function Hero() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link
-              href="/learning-path#level-1"
+              href="/levels/level-1"
               className="btn-primary flex items-center space-x-2 text-lg px-8 py-4"
             >
               <span>Begin Your Journey</span>

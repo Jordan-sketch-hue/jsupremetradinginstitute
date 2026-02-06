@@ -198,7 +198,7 @@ export default function LearningPath() {
         viewport={{ once: true }}
         className="text-center mt-16"
       >
-        <Link href="/learning-path#level-1" className="btn-primary text-lg px-10 py-4">
+        <Link href="/levels/level-1" className="btn-primary text-lg px-10 py-4">
           Start Your Journey Now
         </Link>
         <p className="text-gray-600 mt-4">No credit card required • Free trial available</p>

@@ -17,6 +17,7 @@ export default function AccountManagementPage() {
   const [selectedStrategy, setSelectedStrategy] = useState<
     'conservative' | 'moderate' | 'aggressive'
   >('moderate')
+  const [assessmentAnswers, setAssessmentAnswers] = useState<Record<number, string>>({})
 
   const strategies = {
     conservative: {
@@ -55,6 +56,67 @@ export default function AccountManagementPage() {
       example: '$10,000 account → Risk $200-500 per trade → Monthly target: 20-40% (or -30%)',
     },
   }
+
+  const videoLessons = [
+    {
+      title: 'Position Sizing Basics (YouTube)',
+      url: 'https://www.youtube.com/results?search_query=position+sizing+trading+basics',
+      duration: '10-20 min',
+    },
+    {
+      title: 'Risk Management for Traders (YouTube)',
+      url: 'https://www.youtube.com/results?search_query=risk+management+for+traders',
+      duration: '15-25 min',
+    },
+    {
+      title: 'Drawdown Recovery Math (YouTube)',
+      url: 'https://www.youtube.com/results?search_query=trading+drawdown+recovery+math',
+      duration: '8-15 min',
+    },
+  ]
+
+  const assessment = [
+    {
+      id: 1,
+      question: 'What is the recommended max risk per trade for most traders?',
+      options: ['0.5% - 1%', '1% - 2%', '5% - 10%', '10%+'],
+      answer: '1% - 2%',
+    },
+    {
+      id: 2,
+      question: 'Why are large drawdowns dangerous?',
+      options: [
+        'They reduce trading time',
+        'They require exponentially larger gains to recover',
+        'They increase win rate',
+        'They improve discipline automatically',
+      ],
+      answer: 'They require exponentially larger gains to recover',
+    },
+    {
+      id: 3,
+      question: 'Position size is calculated using which core inputs?',
+      options: [
+        'Account balance, risk %, stop distance',
+        'Win rate and reward:risk',
+        'Market trend and volume',
+        'News sentiment and leverage',
+      ],
+      answer: 'Account balance, risk %, stop distance',
+    },
+    {
+      id: 4,
+      question: 'What is a practical weekly loss limit for risk control?',
+      options: ['-2%', '-5%', '-10%', '-25%'],
+      answer: '-10%',
+    },
+    {
+      id: 5,
+      question: 'Which risk profile is best for beginners?',
+      options: ['Aggressive', 'Moderate', 'Conservative', 'Any if they backtest'],
+      answer: 'Conservative',
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-matte-black via-royal-green/5 to-matte-black py-12 px-4">
@@ -337,6 +399,89 @@ export default function AccountManagementPage() {
               Pro Tip: The best traders know when NOT to trade. Protecting your capital during
               drawdowns is as important as growing it during winning streaks.
             </p>
+          </div>
+        </motion.div>
+
+        {/* Video Lessons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-12 bg-gradient-to-br from-royal-green/20 to-royal-emerald/20 border border-royal-green/50 rounded-2xl p-8"
+        >
+          <h2 className="text-2xl font-bold text-white mb-6">Video Lessons</h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            {videoLessons.map(video => (
+              <a
+                key={video.title}
+                href={video.url}
+                target="_blank"
+                rel="noreferrer"
+                className="bg-matte-black/50 border border-royal-green/30 rounded-xl p-5 hover:border-royal-emerald transition-colors"
+              >
+                <div className="text-white font-semibold mb-2">{video.title}</div>
+                <div className="text-gray-400 text-sm">Estimated length: {video.duration}</div>
+                <div className="text-royal-emerald text-sm mt-3">Open on YouTube →</div>
+              </a>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Assessment */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="mt-12 bg-matte-black/50 border border-royal-green/30 rounded-2xl p-8"
+        >
+          <h2 className="text-2xl font-bold text-white mb-6">Assessment: Account Management</h2>
+          <p className="text-gray-400 mb-6">
+            Answer each question to confirm understanding. Your selections are saved locally.
+          </p>
+          <div className="space-y-6">
+            {assessment.map(item => (
+              <div
+                key={item.id}
+                className="bg-royal-green/10 border border-royal-green/30 rounded-xl p-5"
+              >
+                <div className="text-white font-semibold mb-3">
+                  {item.id}. {item.question}
+                </div>
+                <div className="grid md:grid-cols-2 gap-3">
+                  {item.options.map(option => {
+                    const selected = assessmentAnswers[item.id] === option
+                    const isCorrect = selected && option === item.answer
+                    const isWrong = selected && option !== item.answer
+                    return (
+                      <button
+                        key={option}
+                        onClick={() =>
+                          setAssessmentAnswers(prev => ({
+                            ...prev,
+                            [item.id]: option,
+                          }))
+                        }
+                        className={`text-left px-4 py-3 rounded-lg border transition-colors ${
+                          isCorrect
+                            ? 'bg-green-500/20 border-green-500/60 text-green-200'
+                            : isWrong
+                              ? 'bg-red-500/20 border-red-500/60 text-red-200'
+                              : 'bg-matte-black/40 border-royal-green/30 text-gray-200 hover:border-royal-emerald'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    )
+                  })}
+                </div>
+                {assessmentAnswers[item.id] && (
+                  <div className="text-sm text-gray-300 mt-3">
+                    Correct answer:{' '}
+                    <span className="text-royal-emerald font-semibold">{item.answer}</span>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </motion.div>
       </div>
