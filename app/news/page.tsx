@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
   Newspaper,
@@ -15,6 +16,7 @@ import {
   ExternalLink,
   Globe,
 } from 'lucide-react'
+import { articles } from '@/lib/articles'
 
 type CalendarEvent = {
   title: string
@@ -56,56 +58,7 @@ export default function NewsPage() {
     loadCalendar()
   }, [])
 
-  const latestNews = [
-    {
-      title: 'How to Identify Valid Order Blocks in Ranging Markets',
-      category: 'Strategy',
-      date: '2 hours ago',
-      excerpt:
-        'Learn the specific criteria that separate high-probability order blocks from false signals when price is consolidating...',
-      link: '/learning-path#level3',
-    },
-    {
-      title: 'EUR/USD: Institutional Accumulation at 1.0840',
-      category: 'Market Analysis',
-      date: '5 hours ago',
-      excerpt:
-        "Major banks have been quietly accumulating long positions in the 1.0840-1.0850 zone. Here's what this means for retail traders...",
-      link: '/portfolio',
-    },
-    {
-      title: 'The Psychology of Waiting for Order Block Mitigation',
-      category: 'Psychology',
-      date: '1 day ago',
-      excerpt:
-        "Why most traders fail: They can't wait for price to reach their predetermined entry zone. Master this skill and you'll outperform 80% of traders...",
-      link: '/learning-path#level7',
-    },
-    {
-      title: 'Gold Testing Key Liquidity Zone at $2,650',
-      category: 'Market Analysis',
-      date: '1 day ago',
-      excerpt:
-        'XAUUSD has formed equal highs at $2,650 - a textbook liquidity grab setup. Watch for a stop hunt before the real move...',
-      link: '/portfolio',
-    },
-    {
-      title: 'Understanding ATR for Optimal Stop Loss Placement',
-      category: 'Risk Management',
-      date: '2 days ago',
-      excerpt:
-        'Stop getting stopped out by normal market noise. ATR-based stops adapt to current volatility and drastically improve your win rate...',
-      link: '/learning-path#level5',
-    },
-    {
-      title: 'Weekly Bias: Major Pairs & Commodities (Feb 3-7)',
-      category: 'Weekly Outlook',
-      date: '3 days ago',
-      excerpt:
-        'Our institutional bias for the week ahead: EUR/USD bullish, Gold accumulation, GBP/USD bearish distribution phase...',
-      link: '/portfolio',
-    },
-  ]
+  const latestNews = articles
 
   const upcomingEvents = [
     {
@@ -421,13 +374,13 @@ export default function NewsPage() {
 
                   <p className="text-gray-400 text-sm mb-4 line-clamp-3">{article.excerpt}</p>
 
-                  <a
-                    href={article.link}
+                  <Link
+                    href={`/blog/${article.slug}`}
                     className="flex items-center gap-2 text-accent-gold hover:text-accent-gold/80 transition-colors font-semibold text-sm"
                   >
                     <span>Read More</span>
                     <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </a>
+                  </Link>
                 </div>
               </motion.article>
             ))}

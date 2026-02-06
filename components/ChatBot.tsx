@@ -37,12 +37,20 @@ export default function ChatBot() {
   const [showSessionList, setShowSessionList] = useState(false)
   const [textToSpeechEnabled, setTextToSpeechEnabled] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const TTS_STORAGE_KEY = 'jsupreme_tts_enabled'
 
   // Initialize chat session on mount
   useEffect(() => {
     const newSession = createChatSession('Trading Session ' + new Date().toLocaleTimeString())
     setCurrentSession(newSession)
     saveChatSession(newSession)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = localStorage.getItem(TTS_STORAGE_KEY)
+    if (stored === null) return
+    setTextToSpeechEnabled(stored === 'true')
   }, [])
 
   const scrollToBottom = () => {
@@ -157,6 +165,19 @@ export default function ChatBot() {
     }
   }
 
+  const handleToggleTts = () => {
+    setTextToSpeechEnabled(prev => {
+      const next = !prev
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(TTS_STORAGE_KEY, String(next))
+      }
+      if (!next && 'speechSynthesis' in window) {
+        speechSynthesis.cancel()
+      }
+      return next
+    })
+  }
+
   const handleDeleteSession = (sessionId: string) => {
     deleteChatSession(sessionId)
     if (currentSession?.id === sessionId) {
@@ -208,10 +229,11 @@ export default function ChatBot() {
                 <h3 className="font-playfair font-bold text-xl">AI Trading Assistant</h3>
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => setTextToSpeechEnabled(!textToSpeechEnabled)}
+                    onClick={handleToggleTts}
+                    aria-pressed={textToSpeechEnabled}
                     title={textToSpeechEnabled ? 'Disable audio' : 'Enable audio'}
                     className={`p-1 rounded-lg ${
-                      textToSpeechEnabled ? 'bg-white/20' : 'bg-white/10'
+                      textToSpeechEnabled ? 'bg-white/20' : 'bg-white/10 opacity-60'
                     } hover:bg-white/30 transition-colors`}
                   >
                     <Volume2 className="w-4 h-4" />
@@ -276,7 +298,13 @@ export default function ChatBot() {
                     {message.role === 'assistant' && (
                       <button
                         onClick={() => speakMessage(message.content)}
-                        className="mt-2 text-xs opacity-70 hover:opacity-100 flex items-center space-x-1"
+                        disabled={!textToSpeechEnabled}
+                        title={textToSpeechEnabled ? 'Read aloud' : 'Enable audio to use'}
+                        className={`mt-2 text-xs flex items-center space-x-1 ${
+                          textToSpeechEnabled
+                            ? 'opacity-70 hover:opacity-100'
+                            : 'opacity-40 cursor-not-allowed'
+                        }`}
                       >
                         <Volume2 className="w-3 h-3" />
                         <span>Read aloud</span>
