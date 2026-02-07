@@ -41,6 +41,7 @@ export default function Navigation() {
     { name: 'The Doctrine', href: '/doctrine' },
     { name: 'Learning Path', href: '/learning-path' },
     { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Trends', href: '/trends' },
     { name: 'Calendar', href: '/calendar' },
     { name: 'Portfolio', href: '/portfolio' },
     { name: 'News', href: '/news' },
