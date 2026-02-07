@@ -12,49 +12,120 @@ export interface TechnicalIndicators {
   confidence: number // 45-95%
 }
 
+/**
+ * Calculate RSI using Wilder's smoothing method (authentic formula)
+ * RSI = 100 - (100 / (1 + RS))
+ * RS = Average Gain / Average Loss
+ * Uses Wilder's smoothing for averaging
+ */
 export function calculateRSI(prices: number[], period: number = 14): number {
-  if (prices.length < period) return 50
+  if (prices.length < period + 1) return 50
 
-  let gains = 0
-  let losses = 0
-
-  for (let i = prices.length - period; i < prices.length; i++) {
-    const change = prices[i] - prices[i - 1]
-    if (change > 0) gains += change
-    else losses += Math.abs(change)
+  const changes: number[] = []
+  for (let i = 1; i < prices.length; i++) {
+    changes.push(prices[i] - prices[i - 1])
   }
 
-  const avgGain = gains / period
-  const avgLoss = losses / period
-  const rs = avgLoss === 0 ? 100 : avgGain / avgLoss
+  // Initial averages (simple moving average for first period)
+  let avgGain = 0
+  let avgLoss = 0
+
+  for (let i = 0; i < period; i++) {
+    if (changes[i] > 0) avgGain += changes[i]
+    else avgLoss += Math.abs(changes[i])
+  }
+
+  avgGain /= period
+  avgLoss /= period
+
+  // Wilder's smoothing for subsequent values
+  for (let i = period; i < changes.length; i++) {
+    const change = changes[i]
+    if (change > 0) {
+      avgGain = (avgGain * (period - 1) + change) / period
+      avgLoss = (avgLoss * (period - 1)) / period
+    } else {
+      avgGain = (avgGain * (period - 1)) / period
+      avgLoss = (avgLoss * (period - 1) + Math.abs(change)) / period
+    }
+  }
+
+  // Calculate RS and RSI
+  if (avgLoss === 0) return 100
+  const rs = avgGain / avgLoss
   const rsi = 100 - 100 / (1 + rs)
 
   return Math.min(100, Math.max(0, rsi))
 }
 
+/**
+ * Calculate MACD with proper EMA methodology
+ * MACD Line = 12-period EMA - 26-period EMA
+ * Signal Line = 9-period EMA of MACD Line
+ * Histogram = MACD Line - Signal Line
+ */
 export function calculateMACD(prices: number[]): {
   macd: number
   signal: number
   histogram: number
 } {
-  const ema12 = calculateEMA(prices, 12)
-  const ema26 = calculateEMA(prices, 26)
-  const macd = ema12 - ema26
-  const signalLine = calculateEMA([macd], 9)
-  const histogram = macd - signalLine
-
-  return { macd, signal: signalLine, histogram }
-}
-
-function calculateEMA(prices: number[], period: number): number {
-  const multiplier = 2 / (period + 1)
-  let ema = prices[0]
-
-  for (let i = 1; i < prices.length; i++) {
-    ema = prices[i] * multiplier + ema * (1 - multiplier)
+  if (prices.length < 26) {
+    return { macd: 0, signal: 0, histogram: 0 }
   }
 
-  return ema
+  const ema12Values = calculateEMAArray(prices, 12)
+  const ema26Values = calculateEMAArray(prices, 26)
+
+  // MACD line = EMA12 - EMA26
+  const macdLine: number[] = []
+  for (let i = 0; i < ema12Values.length; i++) {
+    macdLine.push(ema12Values[i] - ema26Values[i])
+  }
+
+  // Signal line = 9-period EMA of MACD line
+  const signalLineValues = calculateEMAArray(macdLine, 9)
+
+  // Get most recent values
+  const macd = macdLine[macdLine.length - 1]
+  const signal = signalLineValues[signalLineValues.length - 1]
+  const histogram = macd - signal
+
+  return { macd, signal, histogram }
+}
+
+/**
+ * Calculate EMA array for all prices (proper exponential moving average)
+ * Returns array of EMA values matching input length
+ */
+function calculateEMAArray(prices: number[], period: number): number[] {
+  if (prices.length < period) return prices
+
+  const multiplier = 2 / (period + 1)
+  const emaArray: number[] = []
+
+  // First EMA is simple moving average of first 'period' prices
+  let sum = 0
+  for (let i = 0; i < period; i++) {
+    sum += prices[i]
+  }
+  let ema = sum / period
+  emaArray.push(ema)
+
+  // Subsequent EMAs use the formula: EMA = (Price - EMA_prev) * multiplier + EMA_prev
+  for (let i = period; i < prices.length; i++) {
+    ema = (prices[i] - ema) * multiplier + ema
+    emaArray.push(ema)
+  }
+
+  return emaArray
+}
+
+/**
+ * Legacy EMA function (kept for backwards compatibility)
+ */
+function calculateEMA(prices: number[], period: number): number {
+  const emaArray = calculateEMAArray(prices, period)
+  return emaArray[emaArray.length - 1]
 }
 
 export function calculateMomentum(prices: number[], period: number = 10): number {

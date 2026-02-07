@@ -9,6 +9,37 @@ interface CandleData {
   v: number[]
 }
 
+interface Candle {
+  timestamp: number
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
+}
+
+// Crypto symbols that should use Binance
+const CRYPTO_SYMBOLS = ['BTCUSD', 'ETHUSD', 'SOLUSD', 'XRPUSD', 'ADAUSD', 'DOGEUSD']
+
+async function getBinanceCandles(symbol: string): Promise<Candle[] | null> {
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/market-data/binance-history?symbol=${symbol}&interval=1h&limit=100`,
+      { cache: 'no-store' }
+    )
+
+    if (!response.ok) return null
+    const data = await response.json()
+
+    if (!data.candles || data.candles.length === 0) return null
+
+    return data.candles
+  } catch (error) {
+    console.error(`Binance fetch error for ${symbol}:`, error)
+    return null
+  }
+}
+
 async function getFinnhubCandles(symbol: string, resolution: string = 'D') {
   // Finnhub free tier: Get historical candles
   const apiKey = process.env.FINNHUB_API_KEY || 'sandbox'
@@ -79,24 +110,40 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    let candles
+    let candles: Candle[] | null = null
+    let dataSource = 'DEMO'
 
-    if (assetType === 'forex' || assetType === 'stock') {
-      // Try Finnhub for forex/stocks
-      candles = await getFinnhubCandles(symbol)
+    // Priority 1: Binance for crypto (real data, free, no key)
+    if (assetType === 'crypto' || CRYPTO_SYMBOLS.includes(symbol)) {
+      candles = await getBinanceCandles(symbol)
+      if (candles) {
+        dataSource = 'BINANCE'
+        console.log(`✅ Using BINANCE data for ${symbol}: ${candles.length} candles`)
+      }
     }
 
-    // If no data from Finnhub or crypto asset, generate mock (with seed for consistency)
+    // Priority 2: Finnhub for forex/stocks/indices (real data, API key)
+    if (!candles && (assetType === 'forex' || assetType === 'stock' || assetType === 'index')) {
+      candles = await getFinnhubCandles(symbol)
+      if (candles) {
+        dataSource = 'FINNHUB'
+        console.log(`✅ Using FINNHUB data for ${symbol}: ${candles.length} candles`)
+      }
+    }
+
+    // Priority 3: Mock data fallback (demo)
     if (!candles) {
-      // For demo purposes, generate realistic mock data
-      // In production, you'd integrate with Binance for crypto or other free sources
       const basePrice = Math.random() * 100 + 50
       candles = generateMockCandles(basePrice, 60)
+      dataSource = 'DEMO'
+      console.log(`⚠️ Using DEMO data for ${symbol}`)
     }
 
     return NextResponse.json({
       symbol,
-      candles: candles.slice(-50), // Return last 50 candles
+      candles: candles.slice(-50), // Return last 50 candles for order block detection
+      count: candles.slice(-50).length,
+      dataSource,
       timestamp: Date.now(),
     })
   } catch (error) {
@@ -106,6 +153,7 @@ export async function GET(request: NextRequest) {
         error: 'Failed to fetch historical data',
         symbol,
         candles: generateMockCandles(50, 50), // Fallback to mock
+        dataSource: 'DEMO',
       },
       { status: 500 }
     )
