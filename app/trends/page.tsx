@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { TechnicalIndicators } from '@/lib/technicalAnalysis'
+import AssetDetailModal from '@/components/AssetDetailModal'
 
 interface AssetTrend {
   symbol: string
@@ -390,8 +391,11 @@ export default function TrendsPage() {
                   </div>
                 </div>
 
-                <button className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded font-medium transition-colors text-sm">
-                  View Details <ChevronDown className="inline w-3 h-3 ml-1" />
+                <button
+                  onClick={() => setSelectedAsset(asset)}
+                  className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded font-medium transition-colors text-sm"
+                >
+                  View Order Blocks <ChevronDown className="inline w-3 h-3 ml-1" />
                 </button>
               </motion.div>
             ))}
@@ -400,151 +404,17 @@ export default function TrendsPage() {
 
         <AnimatePresence>
           {selectedAsset && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedAsset(null)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                onClick={e => e.stopPropagation()}
-                className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-slate-700"
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h2 className="text-3xl font-bold text-white mb-1">{selectedAsset.name}</h2>
-                    <p className="text-slate-400">{selectedAsset.symbol}</p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedAsset(null)}
-                    className="text-slate-400 hover:text-white"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="mb-6 p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-                  <div className="text-4xl font-bold text-white mb-2">
-                    ${selectedAsset.currentPrice.toFixed(4)}
-                  </div>
-                  <div
-                    className={`text-lg font-medium ${
-                      selectedAsset.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'
-                    }`}
-                  >
-                    {selectedAsset.change24h >= 0 ? '▲' : '▼'} {selectedAsset.change24h.toFixed(4)}{' '}
-                    ({selectedAsset.changePercent24h.toFixed(2)}%)
-                  </div>
-                  <div className="text-xs text-slate-400 mt-2">
-                    Last updated: {new Date(selectedAsset.lastUpdate).toLocaleTimeString()}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-                    <div className="text-slate-400 text-xs font-medium mb-1">SIGNAL</div>
-                    <div
-                      className={`text-2xl font-bold ${
-                        selectedAsset.technicals.signal === 'BUY'
-                          ? 'text-emerald-400'
-                          : selectedAsset.technicals.signal === 'SELL'
-                            ? 'text-red-400'
-                            : 'text-yellow-400'
-                      }`}
-                    >
-                      {selectedAsset.technicals.signal}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-                    <div className="text-slate-400 text-xs font-medium mb-1">CONFIDENCE</div>
-                    <div className="text-2xl font-bold text-white">
-                      {selectedAsset.technicals.confidence}%
-                    </div>
-                  </div>
-                  <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-                    <div className="text-slate-400 text-xs font-medium mb-1">TREND</div>
-                    <div className="text-2xl font-bold text-white">
-                      {selectedAsset.technicals.trend}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-                    <div className="text-slate-400 text-xs font-medium mb-2">RSI (14)</div>
-                    <div className="text-3xl font-bold text-white mb-2">
-                      {selectedAsset.technicals.rsi}
-                    </div>
-                    <div className="w-full h-1 bg-slate-600 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${
-                          selectedAsset.technicals.rsi > 70
-                            ? 'bg-red-500'
-                            : selectedAsset.technicals.rsi < 30
-                              ? 'bg-emerald-500'
-                              : 'bg-blue-500'
-                        }`}
-                        style={{ width: `${selectedAsset.technicals.rsi}%` }}
-                      />
-                    </div>
-                    <div className="text-xs text-slate-400 mt-2">
-                      {selectedAsset.technicals.rsi > 70
-                        ? 'Overbought'
-                        : selectedAsset.technicals.rsi < 30
-                          ? 'Oversold'
-                          : 'Neutral'}
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-                    <div className="text-slate-400 text-xs font-medium mb-2">MACD</div>
-                    <div
-                      className={`text-2xl font-bold mb-2 ${
-                        selectedAsset.technicals.macdSignal === 'BULLISH'
-                          ? 'text-emerald-400'
-                          : selectedAsset.technicals.macdSignal === 'BEARISH'
-                            ? 'text-red-400'
-                            : 'text-yellow-400'
-                      }`}
-                    >
-                      {selectedAsset.technicals.macdSignal}
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      Momentum: {selectedAsset.technicals.momentum.toFixed(3)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
-                    <div className="text-emerald-400 text-xs font-medium mb-2">ENTRY ZONE</div>
-                    <div className="text-sm font-mono text-white">{selectedAsset.entryZone}</div>
-                  </div>
-                  <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/30">
-                    <div className="text-red-400 text-xs font-medium mb-2">STOP LOSS</div>
-                    <div className="text-sm font-mono text-white">{selectedAsset.stopLoss}</div>
-                  </div>
-                  <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
-                    <div className="text-blue-400 text-xs font-medium mb-2">TAKE PROFIT</div>
-                    <div className="text-sm font-mono text-white">{selectedAsset.takeProfit}</div>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600 mb-6">
-                  <div className="text-slate-400 text-xs font-medium mb-3">ANALYSIS</div>
-                  <p className="text-white text-sm leading-relaxed">{selectedAsset.reasoning}</p>
-                </div>
-
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-sm text-blue-300">
-                  ℹ️ Using free multi-source APIs: CoinGecko (crypto), AlphaVantage (forex), with
-                  real-time technical analysis updated every 30 seconds.
-                </div>
-              </motion.div>
-            </motion.div>
+            <AssetDetailModal
+              asset={{
+                symbol: selectedAsset.symbol,
+                name: selectedAsset.name,
+                price: selectedAsset.currentPrice,
+                signal: selectedAsset.technicals.signal,
+                confidence: selectedAsset.technicals.confidence,
+                type: selectedAsset.type,
+              }}
+              onClose={() => setSelectedAsset(null)}
+            />
           )}
         </AnimatePresence>
 
@@ -572,6 +442,12 @@ export default function TrendsPage() {
               <h4 className="text-yellow-400 font-bold mb-2">Technical Indicators</h4>
               <p className="text-slate-300">
                 RSI, MACD, Momentum calculated real-time from live data
+              </p>
+            </div>
+            <div>
+              <h4 className="text-purple-400 font-bold mb-2">Order Block Detection</h4>
+              <p className="text-slate-300">
+                Real-time price action analysis identifying institutional zones
               </p>
             </div>
           </div>
