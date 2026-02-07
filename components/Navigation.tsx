@@ -38,14 +38,12 @@ export default function Navigation() {
 
   const navItems = [
     { name: 'Home', href: '/' },
-    { name: 'The Doctrine', href: '/doctrine' },
-    { name: 'Learning Path', href: '/learning-path' },
+    { name: 'Doctrine', href: '/doctrine' },
+    { name: 'Learn', href: '/learning-path' },
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Trends', href: '/trends' },
     { name: 'Calendar', href: '/calendar' },
     { name: 'Portfolio', href: '/portfolio' },
-    { name: 'News', href: '/news' },
-    { name: 'Community', href: '/community' },
   ]
 
   const quickLinks = [
@@ -66,25 +64,25 @@ export default function Navigation() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="w-12 h-12 bg-gradient-to-br from-royal-green to-royal-emerald rounded-lg flex items-center justify-center transform group-hover:rotate-6 transition-transform">
-              <TrendingUp className="w-7 h-7 text-white" />
+          <Link href="/" className="flex items-center space-x-2 group flex-shrink-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-royal-green to-royal-emerald rounded-lg flex items-center justify-center transform group-hover:rotate-6 transition-transform">
+              <TrendingUp className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <h1 className="text-white font-cinzel text-xl font-bold">J SUPREME</h1>
-              <p className="text-accent-gold text-xs tracking-wider">MARKET INSTITUTE</p>
+            <div className="hidden sm:block">
+              <h1 className="text-white font-cinzel text-sm font-bold">J SUPREME</h1>
+              <p className="text-accent-gold text-xs">MARKET</p>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-6">
+          <div className="hidden lg:flex items-center space-x-4">
             {navItems.map(item => (
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-platinum hover:text-accent-gold transition-colors font-medium text-sm"
+                className="text-platinum hover:text-accent-gold transition-colors font-medium text-xs whitespace-nowrap"
               >
                 {item.name}
               </Link>

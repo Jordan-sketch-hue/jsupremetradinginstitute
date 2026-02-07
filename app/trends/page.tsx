@@ -87,6 +87,7 @@ export default function TrendsPage() {
   const [filter, setFilter] = useState<'all' | 'forex' | 'crypto' | 'indices' | 'commodities'>(
     'all'
   )
+  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<string>('')
 
@@ -190,16 +191,31 @@ export default function TrendsPage() {
           return data
         })
 
-        assetsList.sort((a, b) => b.technicals.confidence - a.technicals.confidence)
+        assetsList.sort((a, b) => {
+          // Priority: BUY > SELL > WAIT, then by confidence
+          const signalOrder = { BUY: 0, SELL: 1, WAIT: 2 }
+          const signalDiff =
+            signalOrder[a.technicals.signal as keyof typeof signalOrder] -
+            signalOrder[b.technicals.signal as keyof typeof signalOrder]
+
+          if (signalDiff !== 0) return signalDiff
+          return b.technicals.confidence - a.technicals.confidence
+        })
 
         setAssets(assetsList)
         setLastUpdate(new Date().toLocaleTimeString())
         setLoading(false)
       } catch (error) {
         console.error('Error fetching market data:', error)
-        const demoAssets = ASSETS_CONFIG.map(generateDemoAsset).sort(
-          (a, b) => b.technicals.confidence - a.technicals.confidence
-        )
+        const demoAssets = ASSETS_CONFIG.map(generateDemoAsset).sort((a, b) => {
+          const signalOrder = { BUY: 0, SELL: 1, WAIT: 2 }
+          const signalDiff =
+            signalOrder[a.technicals.signal as keyof typeof signalOrder] -
+            signalOrder[b.technicals.signal as keyof typeof signalOrder]
+
+          if (signalDiff !== 0) return signalDiff
+          return b.technicals.confidence - a.technicals.confidence
+        })
         setAssets(demoAssets)
         setLastUpdate(new Date().toLocaleTimeString())
         setLoading(false)
@@ -211,7 +227,13 @@ export default function TrendsPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const filteredAssets = filter === 'all' ? assets : assets.filter(asset => asset.type === filter)
+  const filteredAssets = (filter === 'all' ? assets : assets.filter(asset => asset.type === filter))
+    .filter(
+      asset =>
+        asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .slice(0, 12) // Show only top 12 setups
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 pt-4">
@@ -219,49 +241,62 @@ export default function TrendsPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-6"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Trends & Direction Analysis</h1>
-              <p className="text-slate-400">
-                Top picks ranked by confidence • Real-time data • Multi-source integration
-              </p>
+              <h1 className="text-3xl font-bold text-white">Top Trading Setups</h1>
+              <p className="text-sm text-slate-400">Sorted by signal strength & confidence</p>
             </div>
-            <div className="text-right text-sm text-slate-400">
+            <div className="text-right text-xs text-slate-400">
               {loading ? (
-                <div className="animate-pulse">Fetching live data...</div>
+                <div className="animate-pulse">Loading...</div>
               ) : (
-                <div>Last update: {lastUpdate}</div>
+                <div>Updated: {lastUpdate}</div>
               )}
             </div>
           </div>
 
-          <div className="flex gap-2 flex-wrap">
-            {[
-              { label: 'All Assets', value: 'all' },
-              { label: 'Forex', value: 'forex' },
-              { label: 'Crypto', value: 'crypto' },
-              { label: 'Indices', value: 'indices' },
-              { label: 'Commodities', value: 'commodities' },
-            ].map(btn => (
-              <motion.button
-                key={btn.value}
-                whileHover={{ scale: 1.05 }}
-                onClick={() => setFilter(btn.value as typeof filter)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  filter === btn.value
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/50'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                {btn.label}
-              </motion.button>
-            ))}
+          {/* Search & Filter Bar */}
+          <div className="flex gap-2 flex-wrap items-center">
+            {/* Search Input */}
+            <div className="flex-1 min-w-[200px]">
+              <input
+                type="text"
+                placeholder="Search assets..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-slate-700 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Filter Buttons */}
+            <div className="flex gap-2">
+              {[
+                { label: 'All', value: 'all' },
+                { label: 'Forex', value: 'forex' },
+                { label: 'Crypto', value: 'crypto' },
+                { label: 'Indices', value: 'indices' },
+                { label: 'Commodities', value: 'commodities' },
+              ].map(btn => (
+                <motion.button
+                  key={btn.value}
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => setFilter(btn.value as typeof filter)}
+                  className={`px-3 py-2 rounded-lg font-medium transition-all text-sm ${
+                    filter === btn.value
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/50'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {btn.label}
+                </motion.button>
+              ))}
+            </div>
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
           <AnimatePresence>
             {filteredAssets.map((asset, idx) => (
               <motion.div
@@ -269,9 +304,9 @@ export default function TrendsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: idx * 0.05 }}
+                transition={{ delay: idx * 0.03 }}
                 onClick={() => setSelectedAsset(asset)}
-                className={`p-5 rounded-lg border-2 cursor-pointer transition-all ${
+                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                   asset.technicals.signal === 'BUY'
                     ? 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-400'
                     : asset.technicals.signal === 'SELL'
@@ -280,18 +315,18 @@ export default function TrendsPage() {
                 }`}
               >
                 {asset.technicals.confidence >= 75 && (
-                  <div className="inline-block mb-3 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 text-white">
-                    ⭐ TOP PICK
+                  <div className="inline-block mb-2 px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 text-white">
+                    ⭐ TOP
                   </div>
                 )}
 
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between mb-2">
                   <div>
-                    <h3 className="text-lg font-bold text-white">{asset.name}</h3>
-                    <p className="text-sm text-slate-400">{asset.symbol}</p>
+                    <h3 className="text-base font-bold text-white">{asset.name}</h3>
+                    <p className="text-xs text-slate-400">{asset.symbol}</p>
                   </div>
                   <div
-                    className={`text-xl font-bold ${
+                    className={`text-lg font-bold ${
                       asset.technicals.signal === 'BUY'
                         ? 'text-emerald-400'
                         : asset.technicals.signal === 'SELL'
@@ -303,12 +338,12 @@ export default function TrendsPage() {
                   </div>
                 </div>
 
-                <div className="mb-3">
-                  <div className="text-2xl font-bold text-white">
+                <div className="mb-2">
+                  <div className="text-xl font-bold text-white">
                     ${asset.currentPrice.toFixed(4)}
                   </div>
                   <div
-                    className={`text-sm font-medium ${
+                    className={`text-xs font-medium ${
                       asset.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'
                     }`}
                   >
@@ -317,7 +352,7 @@ export default function TrendsPage() {
                   </div>
                 </div>
 
-                <div className="mb-4">
+                <div className="mb-3">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs text-slate-400">Confidence</span>
                     <span className="text-xs font-bold text-slate-300">
