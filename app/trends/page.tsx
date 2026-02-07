@@ -91,6 +91,7 @@ export default function TrendsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<string>('')
+  const [expandAll, setExpandAll] = useState(false)
 
   useEffect(() => {
     const fetchMarketData = async () => {
@@ -228,13 +229,40 @@ export default function TrendsPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const filteredAssets = (filter === 'all' ? assets : assets.filter(asset => asset.type === filter))
-    .filter(
-      asset =>
-        asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredAssets = (
+    filter === 'all' ? assets : assets.filter(asset => asset.type === filter)
+  ).filter(
+    asset =>
+      asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  // Calculate tradability score (reliability + signal strength + trend alignment)
+  const assetsWithScores = filteredAssets.map(asset => ({
+    ...asset,
+    tradability: calculateTradability(asset),
+    confidenceTier:
+      asset.technicals.confidence >= 75
+        ? 'HIGH'
+        : asset.technicals.confidence >= 60
+          ? 'MEDIUM'
+          : 'LOW',
+  }))
+
+  // Show top 10 by default, expand to all if expandAll is true
+  const displayedAssets = expandAll ? assetsWithScores : assetsWithScores.slice(0, 10)
+  const hiddenCount = assetsWithScores.length - 10
+
+  function calculateTradability(asset: AssetTrend): number {
+    // Combines: confidence (40%), signal strength (30%), trend reliability (30%)
+    const signalScore =
+      asset.technicals.signal === 'BUY' ? 100 : asset.technicals.signal === 'SELL' ? 80 : 40
+    const trendScore =
+      asset.technicals.trend === 'UP' || asset.technicals.trend === 'DOWN' ? 100 : 60
+    return Math.round(
+      ((asset.technicals.confidence * 0.4 + signalScore * 0.3 + trendScore * 0.3) / 100) * 100
     )
-    .slice(0, 12) // Show only top 12 setups
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 pt-4">
@@ -294,12 +322,41 @@ export default function TrendsPage() {
                 </motion.button>
               ))}
             </div>
+
+            {/* Expand/Collapse Toggle */}
+            {assetsWithScores.length > 10 && (
+              <motion.button
+                onClick={() => setExpandAll(!expandAll)}
+                className="px-3 py-2 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-sm font-medium transition-all flex items-center gap-1"
+              >
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${expandAll ? 'rotate-180' : ''}`}
+                />
+                {expandAll ? `Show Top 10` : `Show All (${assetsWithScores.length})`}
+              </motion.button>
+            )}
+          </div>
+
+          {/* Confidence Tier Info */}
+          <div className="flex gap-3 mt-4 text-xs">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-slate-300">High Confidence (75%+)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              <span className="text-slate-300">Medium (60-74%)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+              <span className="text-slate-300">Lower (&lt;60%)</span>
+            </div>
           </div>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
           <AnimatePresence>
-            {filteredAssets.map((asset, idx) => (
+            {displayedAssets.map((asset, idx) => (
               <motion.div
                 key={asset.symbol}
                 initial={{ opacity: 0, y: 20 }}
@@ -315,11 +372,24 @@ export default function TrendsPage() {
                       : 'border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10 hover:border-yellow-400'
                 }`}
               >
-                {asset.technicals.confidence >= 75 && (
-                  <div className="inline-block mb-2 px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 text-white">
-                    ⭐ TOP
-                  </div>
-                )}
+                {/* Top badges */}
+                <div className="flex gap-2 mb-2 flex-wrap">
+                  {asset.technicals.confidence >= 75 && (
+                    <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 text-white">
+                      ⭐ HIGH
+                    </div>
+                  )}
+                  {asset.confidenceTier === 'MEDIUM' && (
+                    <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-400 to-blue-600 text-white">
+                      📊 MEDIUM
+                    </div>
+                  )}
+                  {asset.confidenceTier === 'LOW' && (
+                    <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 text-white">
+                      ⚠ LOWER
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -355,7 +425,7 @@ export default function TrendsPage() {
 
                 <div className="mb-3">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-slate-400">Confidence</span>
+                    <span className="text-xs text-slate-400">Signal Confidence</span>
                     <span className="text-xs font-bold text-slate-300">
                       {asset.technicals.confidence}%
                     </span>
@@ -376,6 +446,15 @@ export default function TrendsPage() {
                   </div>
                 </div>
 
+                {/* Tradability Score */}
+                <div className="mb-3 p-2 bg-slate-700/50 rounded border border-slate-600">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold text-slate-300">Tradability Score</span>
+                    <span className="text-sm font-bold text-purple-300">{asset.tradability}%</span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">Reliability for trading</div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 text-xs mb-4">
                   <div className="bg-slate-700/50 p-2 rounded">
                     <div className="text-slate-400">RSI</div>
@@ -388,6 +467,30 @@ export default function TrendsPage() {
                   <div className="bg-slate-700/50 p-2 rounded col-span-2">
                     <div className="text-slate-400">MACD</div>
                     <div className="text-white font-bold">{asset.technicals.macdSignal}</div>
+                  </div>
+                </div>
+
+                {/* Trading Action Recommendation */}
+                <div
+                  className={`mb-4 p-2 rounded border text-xs ${
+                    asset.technicals.signal === 'BUY'
+                      ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-300'
+                      : asset.technicals.signal === 'SELL'
+                        ? 'bg-red-500/10 border-red-500/50 text-red-300'
+                        : 'bg-yellow-500/10 border-yellow-500/50 text-yellow-300'
+                  }`}
+                >
+                  <div className="font-semibold mb-1">
+                    {asset.technicals.signal === 'BUY'
+                      ? '✓ Entry Long Setup'
+                      : asset.technicals.signal === 'SELL'
+                        ? '✗ Entry Short Setup'
+                        : '⊘ Wait for Confirmation'}
+                  </div>
+                  <div className="text-slate-300 text-xs">
+                    {asset.technicals.signal === 'BUY'
+                      ? `Entry: ${asset.entryZone} | Stop: ${asset.stopLoss}`
+                      : `Entry: ${asset.entryZone} | Stop: ${asset.stopLoss}`}
                   </div>
                 </div>
 
