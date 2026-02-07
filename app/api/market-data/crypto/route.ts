@@ -8,6 +8,7 @@ interface CryptoPrice {
   change24h: number
   changePercent24h: number
   timestamp: string
+  dataSource: 'LIVE' | 'DEMO'
 }
 
 // CoinGecko free API - no rate limits
@@ -50,6 +51,7 @@ async function fetchCryptoFromCoinGecko(symbols: string[]): Promise<CryptoPrice[
           change24h: coin.usd * (coin.usd_24h_change / 100),
           changePercent24h: coin.usd_24h_change || 0,
           timestamp: new Date().toISOString(),
+          dataSource: 'LIVE',
         }
 
         results.push(price)

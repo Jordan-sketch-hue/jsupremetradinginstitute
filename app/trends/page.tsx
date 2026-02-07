@@ -20,6 +20,7 @@ interface AssetTrend {
   takeProfit: string
   reasoning: string
   lastUpdate: string
+  dataSource?: 'LIVE' | 'DEMO'
 }
 
 const ASSETS_CONFIG: Array<{
@@ -130,6 +131,42 @@ export default function TrendsPage() {
           }
         }
 
+        // Fetch indices
+        const indicesSymbols = ASSETS_CONFIG.filter(a => a.type === 'indices')
+        const indicesData: Record<string, any> = {}
+
+        for (const asset of indicesSymbols) {
+          try {
+            const response = await fetch(`/api/market-data/indices?symbols=${asset.symbol}`)
+            if (response.ok) {
+              const data = await response.json()
+              if (data.length > 0) {
+                indicesData[asset.symbol] = data[0]
+              }
+            }
+          } catch (error) {
+            console.log(`Indices fetch for ${asset.symbol} failed`)
+          }
+        }
+
+        // Fetch commodities
+        const commoditiesSymbols = ASSETS_CONFIG.filter(a => a.type === 'commodities')
+        const commoditiesData: Record<string, any> = {}
+
+        for (const asset of commoditiesSymbols) {
+          try {
+            const response = await fetch(`/api/market-data/commodities?symbols=${asset.symbol}`)
+            if (response.ok) {
+              const data = await response.json()
+              if (data.length > 0) {
+                commoditiesData[asset.symbol] = data[0]
+              }
+            }
+          } catch (error) {
+            console.log(`Commodities fetch for ${asset.symbol} failed`)
+          }
+        }
+
         const assetsList = ASSETS_CONFIG.map(config => {
           let data: AssetTrend
 
@@ -142,6 +179,7 @@ export default function TrendsPage() {
               currentPrice: crypto.price,
               change24h: crypto.change24h,
               changePercent24h: crypto.changePercent24h,
+              dataSource: crypto.dataSource || 'DEMO',
               technicals: {
                 rsi: Math.floor(crypto.changePercent24h * 0.7 + 50),
                 macdSignal: crypto.changePercent24h > 0 ? 'BULLISH' : 'BEARISH',
@@ -171,6 +209,7 @@ export default function TrendsPage() {
               currentPrice: forex.bid,
               change24h: forex.change,
               changePercent24h: forex.changePercent,
+              dataSource: forex.dataSource || 'DEMO',
               technicals: {
                 rsi: Math.floor(Math.random() * 60) + 25,
                 macdSignal: 'NEUTRAL',
@@ -184,6 +223,72 @@ export default function TrendsPage() {
               stopLoss: `${(forex.bid * 0.99).toFixed(5)}`,
               takeProfit: `${(forex.bid * 1.015).toFixed(5)}`,
               reasoning: `Live pricing from AlphaVantage API | Updated every 30 seconds`,
+              lastUpdate: new Date().toISOString(),
+            }
+          } else if (config.type === 'indices' && indicesData[config.symbol]) {
+            const index = indicesData[config.symbol]
+            data = {
+              symbol: config.symbol,
+              name: config.name,
+              type: config.type,
+              currentPrice: index.price,
+              change24h: index.change,
+              changePercent24h: index.changePercent,
+              dataSource: index.dataSource || 'DEMO',
+              technicals: {
+                rsi: Math.floor(Math.abs(index.changePercent) * 10 + 45),
+                macdSignal: index.changePercent > 0 ? 'BULLISH' : 'BEARISH',
+                momentum: index.change,
+                trend:
+                  index.changePercent > 0.5
+                    ? 'UP'
+                    : index.changePercent < -0.5
+                      ? 'DOWN'
+                      : 'SIDEWAYS',
+                signal:
+                  index.changePercent > 0.8 ? 'BUY' : index.changePercent < -0.8 ? 'SELL' : 'WAIT',
+                confidence: Math.floor(Math.abs(index.changePercent) * 20 + 50),
+              },
+              keyLevel: index.price * 0.99,
+              entryZone: `${(index.price * 0.998).toFixed(2)} - ${(index.price * 1.002).toFixed(2)}`,
+              stopLoss: `${(index.price * 0.97).toFixed(2)}`,
+              takeProfit: `${(index.price * 1.05).toFixed(2)}`,
+              reasoning: `Live index data from Finnhub | Real market pricing`,
+              lastUpdate: new Date().toISOString(),
+            }
+          } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
+            const commodity = commoditiesData[config.symbol]
+            data = {
+              symbol: config.symbol,
+              name: config.name,
+              type: config.type,
+              currentPrice: commodity.price,
+              change24h: commodity.change,
+              changePercent24h: commodity.changePercent,
+              dataSource: commodity.dataSource || 'DEMO',
+              technicals: {
+                rsi: Math.floor(Math.abs(commodity.changePercent) * 15 + 40),
+                macdSignal: commodity.changePercent > 0 ? 'BULLISH' : 'BEARISH',
+                momentum: commodity.change,
+                trend:
+                  commodity.changePercent > 0.3
+                    ? 'UP'
+                    : commodity.changePercent < -0.3
+                      ? 'DOWN'
+                      : 'SIDEWAYS',
+                signal:
+                  commodity.changePercent > 0.5
+                    ? 'BUY'
+                    : commodity.changePercent < -0.5
+                      ? 'SELL'
+                      : 'WAIT',
+                confidence: Math.floor(Math.abs(commodity.changePercent) * 25 + 55),
+              },
+              keyLevel: commodity.price * 0.98,
+              entryZone: `${(commodity.price * 0.97).toFixed(2)} - ${(commodity.price * 1.02).toFixed(2)}`,
+              stopLoss: `${(commodity.price * 0.93).toFixed(2)}`,
+              takeProfit: `${(commodity.price * 1.08).toFixed(2)}`,
+              reasoning: `Live commodity pricing from Finnhub | Market data`,
               lastUpdate: new Date().toISOString(),
             }
           } else {
@@ -374,6 +479,17 @@ export default function TrendsPage() {
               >
                 {/* Top badges */}
                 <div className="flex gap-2 mb-2 flex-wrap">
+                  {/* Data Source Badge */}
+                  <div
+                    className={`px-2 py-1 rounded-full text-xs font-bold ${
+                      asset.dataSource === 'LIVE'
+                        ? 'bg-gradient-to-r from-green-500 to-green-700 text-white'
+                        : 'bg-gradient-to-r from-gray-500 to-gray-700 text-white'
+                    }`}
+                  >
+                    {asset.dataSource === 'LIVE' ? '🟢 LIVE' : '⚪ DEMO'}
+                  </div>
+
                   {asset.technicals.confidence >= 75 && (
                     <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 text-white">
                       ⭐ HIGH
