@@ -22,6 +22,7 @@ interface ForexPrice {
 
 // Cache with TTL to respect rate limits
 const cache = new Map<string, { data: ForexPrice[]; timestamp: number }>()
+const previousPrices = new Map<string, number>() // Store previous prices for change calculation
 const CACHE_TTL = 60 * 1000 // 1 minute
 let currentKeyIndex = 0
 
@@ -78,14 +79,25 @@ async function fetchForexFromAlphaVantage(symbols: string[]): Promise<ForexPrice
 
         if (data['Realtime Currency Exchange Rate']) {
           const rate = data['Realtime Currency Exchange Rate']
+          const currentPrice = parseFloat(rate['5. Exchange Rate'])
+
+          // Calculate real change% from previous price
+          const previousPrice = previousPrices.get(symbol)
+          const change = previousPrice ? currentPrice - previousPrice : 0
+          const changePercent = previousPrice
+            ? ((currentPrice - previousPrice) / previousPrice) * 100
+            : 0
+
+          // Store current price for next comparison
+          previousPrices.set(symbol, currentPrice)
+
           priceData = {
             symbol,
-            bid: parseFloat(rate['5. Exchange Rate']) * 0.9999,
-            ask: parseFloat(rate['5. Exchange Rate']) * 1.0001,
+            bid: currentPrice * 0.9999,
+            ask: currentPrice * 1.0001,
             timestamp: new Date().toISOString(),
-            change:
-              parseFloat(rate['5. Exchange Rate']) - parseFloat(rate['5. Exchange Rate']) * 0.995,
-            changePercent: Math.random() * 2 - 1,
+            change: change,
+            changePercent: changePercent,
             dataSource: 'LIVE',
           }
           break

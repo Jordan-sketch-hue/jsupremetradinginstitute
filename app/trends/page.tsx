@@ -114,7 +114,7 @@ export default function TrendsPage() {
           }
         }
 
-        const forexSymbols = ASSETS_CONFIG.filter(a => a.type === 'forex').slice(0, 5)
+        const forexSymbols = ASSETS_CONFIG.filter(a => a.type === 'forex')
         const forexData: Record<string, any> = {}
 
         for (const asset of forexSymbols) {
