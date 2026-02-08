@@ -427,7 +427,7 @@ export default function TrendsPage() {
                         : 'bg-gradient-to-r from-gray-500 to-gray-700 text-white'
                     }`}
                   >
-                    {asset.dataSource === 'LIVE' ? 'ðŸŸ¢ LIVE' : 'âšª DEMO'}
+                    {asset.dataSource === 'LIVE' ? 'ðŸŸ¢ LIVE' : 'DEMO'}
                   </div>
 
                   {asset.technicals.confidence >= 75 && (
