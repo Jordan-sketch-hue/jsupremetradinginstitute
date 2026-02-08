@@ -28,8 +28,11 @@ let currentKeyIndex = 0
 
 async function fetchForexFromFinnhub(symbol: string): Promise<ForexPrice | null> {
   try {
-    const finnhubSymbol = symbol.replace('/', '')
-    const url = `https://finnhub.io/api/v1/quote?symbol=OANDA:${finnhubSymbol}&token=${FINNHUB_API_KEY}`
+    const normalized = symbol.includes('/') ? symbol.replace('/', '') : symbol
+    const base = normalized.slice(0, 3)
+    const quote = normalized.slice(3)
+    const finnhubSymbol = `OANDA:${base}_${quote}`
+    const url = `https://finnhub.io/api/v1/quote?symbol=${finnhubSymbol}&token=${FINNHUB_API_KEY}`
 
     const response = await fetch(url)
     const data = await response.json()

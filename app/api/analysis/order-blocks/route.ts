@@ -26,13 +26,35 @@ export async function GET(request: NextRequest) {
     const { candles } = await histResponse.json()
 
     // Detect order blocks
-    const orderBlocks = detectOrderBlocks(candles)
-
-    // Score the setup
-    const { obConfidence, nearestOB } = scoreOrderBlockSetup(currentPrice, candles, signal)
+    let orderBlocks = detectOrderBlocks(candles)
 
     // Find support/resistance
     const { support, resistance } = findLevels(candles)
+
+    // If no order blocks detected, create proxy zones from support/resistance
+    if (orderBlocks.length === 0) {
+      const rangePct = assetType === 'forex' ? 0.002 : assetType === 'crypto' ? 0.01 : 0.004
+      const supportBlocks = support.map(level => ({
+        type: 'BULLISH' as const,
+        priceLevel: level,
+        range: { high: level * (1 + rangePct), low: level * (1 - rangePct) },
+        strength: 55,
+        timestamp: Date.now(),
+        description: `Proxy bullish zone at ${level.toFixed(4)} (support-derived)`,
+      }))
+      const resistanceBlocks = resistance.map(level => ({
+        type: 'BEARISH' as const,
+        priceLevel: level,
+        range: { high: level * (1 + rangePct), low: level * (1 - rangePct) },
+        strength: 55,
+        timestamp: Date.now(),
+        description: `Proxy bearish zone at ${level.toFixed(4)} (resistance-derived)`,
+      }))
+      orderBlocks = [...supportBlocks, ...resistanceBlocks]
+    }
+
+    // Score the setup
+    const { obConfidence, nearestOB } = scoreOrderBlockSetup(currentPrice, candles, signal)
 
     return NextResponse.json({
       symbol,

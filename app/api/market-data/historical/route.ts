@@ -102,11 +102,34 @@ function generateMockCandles(currentPrice: number, count: number = 50) {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const symbol = searchParams.get('symbol')?.toUpperCase()
+  const rawSymbol = searchParams.get('symbol')
+  const symbol = rawSymbol?.toUpperCase()
+  const normalizedSymbol = symbol ? symbol.replace(/[^A-Z0-9]/g, '') : ''
   const assetType = searchParams.get('type') || 'forex'
 
   if (!symbol) {
     return NextResponse.json({ error: 'Symbol required' }, { status: 400 })
+  }
+
+  const forexSymbolToFinnhub = (value: string) => {
+    const base = value.slice(0, 3)
+    const quote = value.slice(3)
+    return `OANDA:${base}_${quote}`
+  }
+
+  const commoditiesSymbolMap: Record<string, string> = {
+    XAUUSD: 'OANDA:XAU_USD',
+    XAGUSD: 'OANDA:XAG_USD',
+    XPTUSD: 'OANDA:XPT_USD',
+    WTI: 'OANDA:WTICO_USD',
+  }
+
+  const indicesSymbolMap: Record<string, string> = {
+    US500: '^GSPC',
+    US30: '^DJI',
+    USTEC: '^IXIC',
+    DE40: '^GDAXI',
+    UK100: '^FTSE',
   }
 
   try {
@@ -114,20 +137,41 @@ export async function GET(request: NextRequest) {
     let dataSource = 'DEMO'
 
     // Priority 1: Binance for crypto (real data, free, no key)
-    if (assetType === 'crypto' || CRYPTO_SYMBOLS.includes(symbol)) {
-      candles = await getBinanceCandles(symbol)
+    if (assetType === 'crypto' || CRYPTO_SYMBOLS.includes(normalizedSymbol)) {
+      candles = await getBinanceCandles(normalizedSymbol)
       if (candles) {
         dataSource = 'BINANCE'
-        console.log(`✅ Using BINANCE data for ${symbol}: ${candles.length} candles`)
+        console.log(`✅ Using BINANCE data for ${normalizedSymbol}: ${candles.length} candles`)
       }
     }
 
     // Priority 2: Finnhub for forex/stocks/indices (real data, API key)
-    if (!candles && (assetType === 'forex' || assetType === 'stock' || assetType === 'index')) {
-      candles = await getFinnhubCandles(symbol)
+    if (
+      !candles &&
+      (assetType === 'forex' ||
+        assetType === 'stock' ||
+        assetType === 'index' ||
+        assetType === 'indices')
+    ) {
+      const finnhubSymbol =
+        assetType === 'forex'
+          ? forexSymbolToFinnhub(normalizedSymbol)
+          : assetType === 'index' || assetType === 'indices'
+            ? indicesSymbolMap[normalizedSymbol] || normalizedSymbol
+            : normalizedSymbol
+      candles = await getFinnhubCandles(finnhubSymbol)
       if (candles) {
         dataSource = 'FINNHUB'
-        console.log(`✅ Using FINNHUB data for ${symbol}: ${candles.length} candles`)
+        console.log(`✅ Using FINNHUB data for ${finnhubSymbol}: ${candles.length} candles`)
+      }
+    }
+
+    if (!candles && assetType === 'commodities') {
+      const finnhubSymbol = commoditiesSymbolMap[normalizedSymbol] || normalizedSymbol
+      candles = await getFinnhubCandles(finnhubSymbol)
+      if (candles) {
+        dataSource = 'FINNHUB'
+        console.log(`✅ Using FINNHUB data for ${finnhubSymbol}: ${candles.length} candles`)
       }
     }
 

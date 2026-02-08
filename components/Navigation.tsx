@@ -59,30 +59,34 @@ export default function Navigation() {
 
   return (
     <nav
-      className={`fixed top-12 w-full z-40 transition-all duration-300 ${
-        scrolled ? 'bg-matte-black bg-opacity-95 backdrop-blur-lg shadow-lg' : 'bg-transparent'
+      className={`fixed top-0 w-full z-40 transition-all duration-300 ${
+        scrolled
+          ? 'bg-matte-black/95 backdrop-blur-lg shadow-lg border-b border-royal-green/20'
+          : 'bg-matte-black/70 backdrop-blur border-b border-royal-green/10'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2 group flex-shrink-0">
-            <div className="w-10 h-10 bg-gradient-to-br from-royal-green to-royal-emerald rounded-lg flex items-center justify-center transform group-hover:rotate-6 transition-transform">
-              <TrendingUp className="w-6 h-6 text-white" />
+          <Link href="/" className="flex items-center space-x-3 group flex-shrink-0">
+            <div className="w-9 h-9 bg-gradient-to-br from-royal-green to-royal-emerald rounded-lg flex items-center justify-center transform group-hover:rotate-6 transition-transform shadow-lg shadow-royal-green/20">
+              <TrendingUp className="w-5 h-5 text-white" />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-white font-cinzel text-sm font-bold">J SUPREME</h1>
-              <p className="text-accent-gold text-xs">MARKET</p>
+              <h1 className="text-white font-cinzel text-base font-bold tracking-wide">
+                J SUPREME
+              </h1>
+              <p className="text-accent-gold text-[11px] tracking-[0.2em]">MARKET</p>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-4">
+          <div className="hidden lg:flex items-center space-x-6">
             {navItems.map(item => (
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-platinum hover:text-accent-gold transition-colors font-medium text-xs whitespace-nowrap"
+                className="text-platinum hover:text-accent-gold transition-colors font-medium text-sm whitespace-nowrap"
               >
                 {item.name}
               </Link>

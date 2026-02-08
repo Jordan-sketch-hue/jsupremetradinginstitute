@@ -13,6 +13,9 @@ interface AssetDetailModalProps {
     signal: string
     confidence: number
     type: string
+    entryZone: string
+    stopLoss: string
+    takeProfitTargets: Array<{ label: string; value: string }>
   }
   onClose: () => void
 }
@@ -24,6 +27,12 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
     const fetchAnalysis = async () => {
       try {
         setLoading(true)
@@ -52,6 +61,7 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
     }
 
     fetchAnalysis()
+    return () => window.removeEventListener('keydown', handleKey)
   }, [asset])
 
   const pooledConfidence = Math.round(
@@ -59,8 +69,14 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
   )
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-slate-900 rounded-lg shadow-2xl max-w-4xl w-full my-8 border border-slate-700">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-900 rounded-lg shadow-2xl max-w-4xl w-full my-8 border border-slate-700"
+        onClick={event => event.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-700">
           <div className="flex items-center gap-3">
@@ -136,6 +152,34 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
                     <p className="text-xs text-slate-400 mt-1">Combined Confidence</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Strategy Targets */}
+              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-100 mb-3">Strategy Targets</h3>
+                <div className="grid md:grid-cols-3 gap-3 text-sm">
+                  <div className="bg-slate-900/60 rounded p-3 border border-slate-700">
+                    <div className="text-xs text-slate-400 uppercase tracking-wide">Entry Zone</div>
+                    <div className="text-slate-100 font-semibold mt-1">{asset.entryZone}</div>
+                  </div>
+                  <div className="bg-slate-900/60 rounded p-3 border border-slate-700">
+                    <div className="text-xs text-slate-400 uppercase tracking-wide">Stop Loss</div>
+                    <div className="text-slate-100 font-semibold mt-1">{asset.stopLoss}</div>
+                  </div>
+                  <div className="bg-slate-900/60 rounded p-3 border border-slate-700">
+                    <div className="text-xs text-slate-400 uppercase tracking-wide">
+                      Take Profit Range
+                    </div>
+                    <div className="text-slate-100 font-semibold mt-1">
+                      {asset.takeProfitTargets
+                        .map(target => `${target.label} ${target.value}`)
+                        .join(' • ')}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400 mt-3">
+                  Targets are derived from current price, signal direction, and asset volatility.
+                </p>
               </div>
 
               {/* Chart */}
