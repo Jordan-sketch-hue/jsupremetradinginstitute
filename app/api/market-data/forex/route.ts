@@ -79,7 +79,7 @@ async function fetchForexFromFinnhub(symbol: string): Promise<ForexPrice | null>
   return null
 }
 
-async function fetchForexFromAlphaVantage(symbols: string[]): Promise<ForexPrice[]> {
+async function fetchForexData(symbols: string[]): Promise<ForexPrice[]> {
   const results: ForexPrice[] = []
 
   for (const symbol of symbols) {
@@ -91,51 +91,9 @@ async function fetchForexFromAlphaVantage(symbols: string[]): Promise<ForexPrice
       continue
     }
 
-    let priceData: ForexPrice | null = null
-
-    // Try AlphaVantage with key rotation
-    for (let attempt = 0; attempt < ALPHA_VANTAGE_KEYS.length; attempt++) {
-      try {
-        const apiKey = ALPHA_VANTAGE_KEYS[currentKeyIndex]
-        currentKeyIndex = (currentKeyIndex + 1) % ALPHA_VANTAGE_KEYS.length
-
-        const [base, quote] = symbol.split('/')
-        const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${base}&to_currency=${quote}&apikey=${apiKey}`
-
-        const response = await fetch(url)
-        const data = await response.json()
-
-        if (data['Realtime Currency Exchange Rate']) {
-          const rate = data['Realtime Currency Exchange Rate']
-          const currentPrice = parseFloat(rate['5. Exchange Rate'])
-
-          // Calculate real change% from previous price
-          const previousPrice = previousPrices.get(symbol)
-          const change = previousPrice ? currentPrice - previousPrice : 0
-          const changePercent = previousPrice
-            ? ((currentPrice - previousPrice) / previousPrice) * 100
-            : 0
-
-          // Store current price for next comparison
-          previousPrices.set(symbol, currentPrice)
-
-          priceData = {
-            symbol,
-            bid: currentPrice * 0.9999,
-            ask: currentPrice * 1.0001,
-            timestamp: new Date().toISOString(),
-            change: change,
-            changePercent: changePercent,
-            dataSource: 'LIVE',
-          }
-          break
-        }
-      } catch (error) {
-        console.error(`AlphaVantage attempt ${attempt + 1} failed for ${symbol}`)
-      }
-    }
-
-    // Fallback to Finnhub if AlphaVantage fails
+    // Priority: FCS → Finnhub → Demo
+    let priceData = await fetchForexFromFCS(symbol)
+    
     if (!priceData) {
       priceData = await fetchForexFromFinnhub(symbol)
     }
