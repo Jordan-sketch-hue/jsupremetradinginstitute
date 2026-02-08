@@ -7,6 +7,7 @@ import ChatBot from '@/components/ChatBot'
 import NotificationSystem from '@/components/NotificationSystem'
 import KeyboardShortcuts from '@/components/KeyboardShortcuts'
 import MarketTicker from '@/components/MarketTicker'
+import LearningTipBar from '@/components/LearningTipBar'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <MarketTicker />
         <Navigation />
         <main className="min-h-screen pt-32 bg-matte-black">{children}</main>
+        <LearningTipBar />
         <Footer />
         <ChatBot />
         <NotificationSystem />

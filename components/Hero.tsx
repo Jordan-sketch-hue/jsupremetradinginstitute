@@ -115,13 +115,6 @@ export default function Hero() {
               <span>Begin Your Journey</span>
               <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link
-              href="/guides/tradingview"
-              className="btn-secondary flex items-center space-x-2 text-lg px-8 py-4"
-            >
-              <span>Watch Free Lesson</span>
-              <BarChart3 className="w-5 h-5" />
-            </Link>
           </motion.div>
 
           {/* Stats */}

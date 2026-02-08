@@ -24,16 +24,6 @@ interface AssetTrend {
   dataSource?: 'LIVE' | 'DEMO'
 }
 
-interface DebugSourceStatus {
-  name: string
-  ok: boolean
-  status: number
-  message?: string
-  count: number
-  liveCount: number
-  demoCount: number
-}
-
 const ASSETS_CONFIG: Array<{
   symbol: string
   name: string
@@ -102,16 +92,9 @@ function generateDemoAsset(config: (typeof ASSETS_CONFIG)[0]): AssetTrend {
 export default function TrendsPage() {
   const [assets, setAssets] = useState<AssetTrend[]>([])
   const [selectedAsset, setSelectedAsset] = useState<AssetTrend | null>(null)
-  const [filter, setFilter] = useState<'all' | 'forex' | 'crypto' | 'indices' | 'commodities'>(
-    'all'
-  )
-  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<string>('')
-  const [expandAll, setExpandAll] = useState(false)
-  const [liveOnly, setLiveOnly] = useState(false)
-  const [debugSources, setDebugSources] = useState<DebugSourceStatus[]>([])
 
   useEffect(() => {
     const cacheKey = 'trends-assets-cache'
@@ -149,71 +132,13 @@ export default function TrendsPage() {
       })
     }
 
-    const readErrorMessage = async (response: Response) => {
-      try {
-        const data = await response.json()
-        if (data?.error) return String(data.error)
-      } catch (error) {
-        // ignore JSON parse errors
-      }
-      try {
-        const text = await response.text()
-        if (text) return text.slice(0, 140)
-      } catch (error) {
-        // ignore text parse errors
-      }
-      return 'Request failed'
-    }
-
-    const parseDataList = async (name: string, response: Response) => {
-      const status = response.status
-      if (!response.ok) {
-        const message = await readErrorMessage(response)
-        return {
-          list: [] as any[],
-          debug: {
-            name,
-            ok: false,
-            status,
-            message,
-            count: 0,
-            liveCount: 0,
-            demoCount: 0,
-          } as DebugSourceStatus,
-        }
-      }
-
+    const parseDataList = async (response: Response) => {
+      if (!response.ok) return []
       try {
         const list = await response.json()
-        const safeList = Array.isArray(list) ? list : []
-        const liveCount = safeList.filter(item => item?.dataSource === 'LIVE').length
-        const demoCount = safeList.filter(item => item?.dataSource === 'DEMO').length
-        const message = safeList.length === 0 ? 'No data returned' : undefined
-        return {
-          list: safeList,
-          debug: {
-            name,
-            ok: true,
-            status,
-            message,
-            count: safeList.length,
-            liveCount,
-            demoCount,
-          } as DebugSourceStatus,
-        }
+        return Array.isArray(list) ? list : []
       } catch (error) {
-        return {
-          list: [] as any[],
-          debug: {
-            name,
-            ok: false,
-            status,
-            message: 'Invalid JSON response',
-            count: 0,
-            liveCount: 0,
-            demoCount: 0,
-          } as DebugSourceStatus,
-        }
+        return []
       }
     }
 
@@ -235,17 +160,12 @@ export default function TrendsPage() {
             fetch(`/api/market-data/commodities?symbols=${commoditiesSymbols.join(',')}`),
           ])
 
-        const [cryptoParsed, forexParsed, indicesParsed, commoditiesParsed] = await Promise.all([
-          parseDataList('Crypto', cryptoResponse),
-          parseDataList('Forex', forexResponse),
-          parseDataList('Indices', indicesResponse),
-          parseDataList('Commodities', commoditiesResponse),
+        const [cryptoList, forexList, indicesList, commoditiesList] = await Promise.all([
+          parseDataList(cryptoResponse),
+          parseDataList(forexResponse),
+          parseDataList(indicesResponse),
+          parseDataList(commoditiesResponse),
         ])
-
-        const cryptoList = cryptoParsed.list
-        const forexList = forexParsed.list
-        const indicesList = indicesParsed.list
-        const commoditiesList = commoditiesParsed.list
         setDebugSources([
           cryptoParsed.debug,
           forexParsed.debug,
@@ -459,16 +379,8 @@ export default function TrendsPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const filteredAssets = (filter === 'all' ? assets : assets.filter(asset => asset.type === filter))
-    .filter(
-      asset =>
-        asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter(asset => (!liveOnly ? true : (asset.dataSource ?? 'DEMO') === 'LIVE'))
-
-  // Calculate tradability score (reliability + signal strength + trend alignment)
-  const assetsWithScores = filteredAssets.map(asset => ({
+  // Show all assets without filters
+  const displayedAssets = assets.map(asset => ({
     ...asset,
     tradability: calculateTradability(asset),
     confidenceTier:
@@ -478,13 +390,6 @@ export default function TrendsPage() {
           ? 'MEDIUM'
           : 'LOW',
   }))
-
-  const liveCount = assetsWithScores.filter(a => (a.dataSource ?? 'DEMO') === 'LIVE').length
-  const demoCount = assetsWithScores.length - liveCount
-
-  // Show top 10 by default, expand to all if expandAll is true
-  const displayedAssets = expandAll ? assetsWithScores : assetsWithScores.slice(0, 10)
-  const hiddenCount = assetsWithScores.length - 10
 
   function calculateTradability(asset: AssetTrend): number {
     // Combines: confidence (40%), signal strength (30%), trend reliability (30%)
@@ -500,179 +405,7 @@ export default function TrendsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pt-24">
       <div className="max-w-7xl mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
-          <div className="rounded-2xl border border-royal-green/30 bg-slate-900/70 backdrop-blur-xl p-6 shadow-xl shadow-royal-green/10">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-royal-green/15 text-royal-emerald text-xs font-semibold tracking-wide">
-                  J SUPREME MARKET INTEL
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white mt-2">
-                  Trends & Institutional Setups
-                </h1>
-                <p className="text-sm text-slate-400">
-                  Branded signal board sorted by confidence, momentum, and structure
-                </p>
-              </div>
-              <div className="text-right text-xs text-slate-400">
-                {loading ? (
-                  <div className="animate-pulse">Loading...</div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span>Updated: {lastUpdate}</span>
-                    {isRefreshing && (
-                      <span className="text-emerald-300 animate-pulse">• Updating</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-              <div className="bg-slate-800/60 rounded-lg p-3 border border-slate-700">
-                <div className="text-slate-400">Total Assets</div>
-                <div className="text-white text-lg font-bold">{assetsWithScores.length}</div>
-              </div>
-              <div className="bg-slate-800/60 rounded-lg p-3 border border-emerald-500/30">
-                <div className="text-slate-400">LIVE Feeds</div>
-                <div className="text-emerald-300 text-lg font-bold">{liveCount}</div>
-              </div>
-              <div className="bg-slate-800/60 rounded-lg p-3 border border-yellow-500/30">
-                <div className="text-slate-400">DEMO Feeds</div>
-                <div className="text-yellow-300 text-lg font-bold">{demoCount}</div>
-              </div>
-              <div className="bg-slate-800/60 rounded-lg p-3 border border-slate-700">
-                <div className="text-slate-400">Refresh Rate</div>
-                <div className="text-white text-lg font-bold">30s</div>
-              </div>
-            </div>
-
-            {debugSources.length > 0 && (
-              <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-100">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="font-semibold">Debug: Data Feed Status</div>
-                  <div className="text-amber-200/80">
-                    If LIVE is 0, check API limits, symbol support, or restart the dev server.
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-4 gap-3 mt-3">
-                  {debugSources.map(source => (
-                    <div
-                      key={source.name}
-                      className={`rounded-lg border p-3 ${
-                        source.ok
-                          ? source.liveCount > 0
-                            ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
-                            : 'border-yellow-400/30 bg-yellow-500/10 text-yellow-100'
-                          : 'border-red-400/30 bg-red-500/10 text-red-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">{source.name}</span>
-                        <span className="text-[10px]">HTTP {source.status}</span>
-                      </div>
-                      <div className="mt-1">
-                        <span className="font-semibold">Count:</span> {source.count}
-                      </div>
-                      <div className="mt-1">
-                        <span className="font-semibold">LIVE:</span> {source.liveCount} |{' '}
-                        <span className="font-semibold">DEMO:</span> {source.demoCount}
-                      </div>
-                      {source.message && <div className="mt-2 text-[10px]">{source.message}</div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Search & Filter Bar */}
-          <div className="mt-4 rounded-xl border border-slate-700 bg-slate-900/60 backdrop-blur-lg p-3 flex gap-2 flex-wrap items-center">
-            {/* Search Input */}
-            <div className="flex-1 min-w-[200px]">
-              <input
-                type="text"
-                placeholder="Search assets..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-800 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-royal-emerald"
-              />
-            </div>
-
-            {/* Filter Buttons */}
-            <div className="flex gap-2">
-              {[
-                { label: 'All', value: 'all' },
-                { label: 'Forex', value: 'forex' },
-                { label: 'Crypto', value: 'crypto' },
-                { label: 'Indices', value: 'indices' },
-                { label: 'Commodities', value: 'commodities' },
-              ].map(btn => (
-                <motion.button
-                  key={btn.value}
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => setFilter(btn.value as typeof filter)}
-                  className={`px-3 py-2 rounded-lg font-medium transition-all text-sm ${
-                    filter === btn.value
-                      ? 'bg-royal-emerald text-white shadow-lg shadow-royal-emerald/40'
-                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                  }`}
-                >
-                  {btn.label}
-                </motion.button>
-              ))}
-            </div>
-
-            {/* Live Only Toggle */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              onClick={() => setLiveOnly(!liveOnly)}
-              className={`px-3 py-2 rounded-lg font-medium transition-all text-sm ${
-                liveOnly
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/40'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-              title="Show only LIVE data sources"
-            >
-              {liveOnly ? '🟢 LIVE Only' : '⚪ All Sources'}
-            </motion.button>
-
-            {/* Expand/Collapse Toggle */}
-            {assetsWithScores.length > 10 && (
-              <motion.button
-                onClick={() => setExpandAll(!expandAll)}
-                className="px-3 py-2 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-sm font-medium transition-all flex items-center gap-1"
-              >
-                <ChevronDown
-                  className={`w-4 h-4 transition-transform ${expandAll ? 'rotate-180' : ''}`}
-                />
-                {expandAll ? `Show Top 10` : `Show All (${assetsWithScores.length})`}
-              </motion.button>
-            )}
-          </div>
-
-          {/* Confidence Tier Info */}
-          <div className="flex gap-3 mt-4 text-xs">
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-slate-300">High Confidence (75%+)</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-blue-500" />
-              <span className="text-slate-300">Medium (60-74%)</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-yellow-500" />
-              <span className="text-slate-300">Lower (&lt;60%)</span>
-            </div>
-          </div>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8 mt-4">
           <AnimatePresence>
             {displayedAssets.map((asset, idx) => (
               <motion.div
@@ -858,6 +591,58 @@ export default function TrendsPage() {
             />
           )}
         </AnimatePresence>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="bg-slate-900/70 border border-slate-700 rounded-lg p-6 mb-6"
+        >
+          <h3 className="text-lg font-bold text-white mb-3">🕒 Market Session Reminder</h3>
+          <div className="grid md:grid-cols-2 gap-4 text-sm text-slate-300">
+            <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
+              <h4 className="text-emerald-300 font-semibold mb-2">
+                Popular Session Opens (EST, UTC-5)
+              </h4>
+              <div className="text-xs text-slate-400 mb-2">Current NY time: {nyTime}</div>
+              <ul className="space-y-1 text-slate-300">
+                <li>Asia (Tokyo): 19:00–04:00</li>
+                <li>London: 02:00–11:00</li>
+                <li>New York: 07:30–16:00</li>
+                <li>Sydney: 16:00–01:00</li>
+              </ul>
+              <div className="mt-3 text-xs text-slate-300">
+                <div className="font-semibold text-slate-200 mb-1">Next Opens In</div>
+                <ul className="space-y-1">
+                  <li>Asia: {sessionCountdowns['Asia (Tokyo)'] || '--:--:--'}</li>
+                  <li>London: {sessionCountdowns['London'] || '--:--:--'}</li>
+                  <li>New York: {sessionCountdowns['New York'] || '--:--:--'}</li>
+                  <li>Sydney: {sessionCountdowns['Sydney'] || '--:--:--'}</li>
+                </ul>
+              </div>
+              <p className="text-xs text-slate-400 mt-2">
+                Overlaps often show higher liquidity: London–New York (07:30–11:00), Asia–London
+                (02:00–04:00). Times shift +1 hour during EDT.
+              </p>
+            </div>
+            <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
+              <h4 className="text-amber-300 font-semibold mb-2">Update Cadence Math</h4>
+              <p className="text-slate-300">
+                This page refreshes every 30 seconds. If you check every 30 minutes, you’ll see up
+                to $$30\text{min} \times 2\text{updates / min} = 60\text{updates}$$ during that
+                window.
+              </p>
+              <p className="text-xs text-slate-400 mt-2">
+                Crypto runs 24/7. Forex typically runs 24 hours on weekdays.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-slate-400">
+            Session behavior reminder: Asia often ranges/accumulates, London tends to expand and run
+            liquidity (manipulation), and New York often drives continuation or reversal
+            (distribution) depending on news and positioning.
+          </div>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

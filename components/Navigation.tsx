@@ -59,7 +59,7 @@ export default function Navigation() {
 
   return (
     <nav
-      className={`fixed top-0 w-full z-40 transition-all duration-300 ${
+      className={`fixed top-12 w-full z-40 transition-all duration-300 ${
         scrolled
           ? 'bg-matte-black/95 backdrop-blur-lg shadow-lg border-b border-royal-green/20'
           : 'bg-matte-black/70 backdrop-blur border-b border-royal-green/10'
