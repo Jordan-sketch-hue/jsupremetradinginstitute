@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -165,12 +165,6 @@ export default function TrendsPage() {
           parseDataList(forexResponse),
           parseDataList(indicesResponse),
           parseDataList(commoditiesResponse),
-        ])
-        setDebugSources([
-          cryptoParsed.debug,
-          forexParsed.debug,
-          indicesParsed.debug,
-          commoditiesParsed.debug,
         ])
 
         const cryptoData: Record<string, any> = {}
@@ -433,22 +427,22 @@ export default function TrendsPage() {
                         : 'bg-gradient-to-r from-gray-500 to-gray-700 text-white'
                     }`}
                   >
-                    {asset.dataSource === 'LIVE' ? '🟢 LIVE' : '⚪ DEMO'}
+                    {asset.dataSource === 'LIVE' ? 'ðŸŸ¢ LIVE' : 'âšª DEMO'}
                   </div>
 
                   {asset.technicals.confidence >= 75 && (
                     <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 text-white">
-                      ⭐ HIGH
+                      â­ HIGH
                     </div>
                   )}
                   {asset.confidenceTier === 'MEDIUM' && (
                     <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-400 to-blue-600 text-white">
-                      📊 MEDIUM
+                      ðŸ“Š MEDIUM
                     </div>
                   )}
                   {asset.confidenceTier === 'LOW' && (
                     <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 text-white">
-                      ⚠ LOWER
+                      âš  LOWER
                     </div>
                   )}
                 </div>
@@ -544,10 +538,10 @@ export default function TrendsPage() {
                 >
                   <div className="font-semibold mb-1">
                     {asset.technicals.signal === 'BUY'
-                      ? '✓ Entry Long Setup'
+                      ? 'âœ“ Entry Long Setup'
                       : asset.technicals.signal === 'SELL'
-                        ? '✗ Entry Short Setup'
-                        : '⊘ Wait for Confirmation'}
+                        ? 'âœ— Entry Short Setup'
+                        : 'âŠ˜ Wait for Confirmation'}
                   </div>
                   <div className="text-slate-300 text-xs">
                     {asset.technicals.signal === 'BUY'
@@ -558,7 +552,7 @@ export default function TrendsPage() {
                     TP Range:{' '}
                     {asset.takeProfitTargets
                       .map(target => `${target.label} ${target.value}`)
-                      .join(' • ')}
+                      .join(' â€¢ ')}
                   </div>
                 </div>
 
@@ -591,93 +585,6 @@ export default function TrendsPage() {
             />
           )}
         </AnimatePresence>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="bg-slate-900/70 border border-slate-700 rounded-lg p-6 mb-6"
-        >
-          <h3 className="text-lg font-bold text-white mb-3">🕒 Market Session Reminder</h3>
-          <div className="grid md:grid-cols-2 gap-4 text-sm text-slate-300">
-            <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
-              <h4 className="text-emerald-300 font-semibold mb-2">
-                Popular Session Opens (EST, UTC-5)
-              </h4>
-              <div className="text-xs text-slate-400 mb-2">Current NY time: {nyTime}</div>
-              <ul className="space-y-1 text-slate-300">
-                <li>Asia (Tokyo): 19:00–04:00</li>
-                <li>London: 02:00–11:00</li>
-                <li>New York: 07:30–16:00</li>
-                <li>Sydney: 16:00–01:00</li>
-              </ul>
-              <div className="mt-3 text-xs text-slate-300">
-                <div className="font-semibold text-slate-200 mb-1">Next Opens In</div>
-                <ul className="space-y-1">
-                  <li>Asia: {sessionCountdowns['Asia (Tokyo)'] || '--:--:--'}</li>
-                  <li>London: {sessionCountdowns['London'] || '--:--:--'}</li>
-                  <li>New York: {sessionCountdowns['New York'] || '--:--:--'}</li>
-                  <li>Sydney: {sessionCountdowns['Sydney'] || '--:--:--'}</li>
-                </ul>
-              </div>
-              <p className="text-xs text-slate-400 mt-2">
-                Overlaps often show higher liquidity: London–New York (07:30–11:00), Asia–London
-                (02:00–04:00). Times shift +1 hour during EDT.
-              </p>
-            </div>
-            <div className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
-              <h4 className="text-amber-300 font-semibold mb-2">Update Cadence Math</h4>
-              <p className="text-slate-300">
-                This page refreshes every 30 seconds. If you check every 30 minutes, you’ll see up
-                to $$30\text{min} \times 2\text{updates / min} = 60\text{updates}$$ during that
-                window.
-              </p>
-              <p className="text-xs text-slate-400 mt-2">
-                Crypto runs 24/7. Forex typically runs 24 hours on weekdays.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 text-xs text-slate-400">
-            Session behavior reminder: Asia often ranges/accumulates, London tends to expand and run
-            liquidity (manipulation), and New York often drives continuation or reversal
-            (distribution) depending on news and positioning.
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-slate-600 rounded-lg p-6"
-        >
-          <h3 className="text-lg font-bold text-white mb-4">📊 Free Data Sources Integrated</h3>
-          <div className="grid md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <h4 className="text-emerald-400 font-bold mb-2">CoinGecko (Crypto)</h4>
-              <p className="text-slate-300">
-                Unlimited free access, 24h price changes, real-time data
-              </p>
-            </div>
-            <div>
-              <h4 className="text-blue-400 font-bold mb-2">AlphaVantage (Forex)</h4>
-              <p className="text-slate-300">
-                5 calls/min free tier, real currency rates, updated live
-              </p>
-            </div>
-            <div>
-              <h4 className="text-yellow-400 font-bold mb-2">Technical Indicators</h4>
-              <p className="text-slate-300">
-                RSI, MACD, Momentum calculated real-time from live data
-              </p>
-            </div>
-            <div>
-              <h4 className="text-purple-400 font-bold mb-2">Order Block Detection</h4>
-              <p className="text-slate-300">
-                Real-time price action analysis identifying institutional zones
-              </p>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </div>
   )
