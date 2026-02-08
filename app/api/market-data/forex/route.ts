@@ -23,8 +23,9 @@ async function fetchForexFromFCS(symbol: string): Promise<ForexPrice | null> {
   if (!FCS_API_KEY) return null
 
   try {
-    // FCS uses format like EUR/USD
+    // Normalize: EURUSD -> EUR/USD or keep EUR/USD
     const formatted = symbol.includes('/') ? symbol : `${symbol.slice(0, 3)}/${symbol.slice(3)}`
+
     const url = `https://fcsapi.com/api-v3/forex/latest?symbol=${formatted}&access_key=${FCS_API_KEY}`
 
     const response = await fetch(url)
@@ -53,7 +54,8 @@ async function fetchForexFromFCS(symbol: string): Promise<ForexPrice | null> {
 
 async function fetchForexFromFinnhub(symbol: string): Promise<ForexPrice | null> {
   try {
-    const normalized = symbol.includes('/') ? symbol.replace('/', '') : symbol
+    // Normalize: EUR/USD or EURUSD -> EURUSD for Finnhub
+    const normalized = symbol.replace('/', '')
     const base = normalized.slice(0, 3)
     const quote = normalized.slice(3)
     const finnhubSymbol = `OANDA:${base}_${quote}`
@@ -93,7 +95,7 @@ async function fetchForexData(symbols: string[]): Promise<ForexPrice[]> {
 
     // Priority: FCS → Finnhub → Demo
     let priceData = await fetchForexFromFCS(symbol)
-    
+
     if (!priceData) {
       priceData = await fetchForexFromFinnhub(symbol)
     }

@@ -18,6 +18,11 @@ const finnhubSymbolMap: Record<string, string> = {
   US500: '^GSPC', // S&P 500
   US30: '^DJI', // Dow Jones
   USTEC: '^IXIC', // Nasdaq
+  DE40: '^GDAXI', // DAX
+  UK100: '^FTSE', // FTSE 100
+  JP225: '^N225', // Nikkei
+  HK50: '^HSI', // Hang Seng
+  FR40: '^FCHI', // CAC 40
 }
 
 async function fetchIndexFromFinnhub(symbol: string): Promise<IndexPrice | null> {

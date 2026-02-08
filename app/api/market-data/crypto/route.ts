@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'sandbox'
+
 interface CryptoPrice {
   symbol: string
   price: number
@@ -11,18 +13,44 @@ interface CryptoPrice {
   dataSource: 'LIVE' | 'DEMO'
 }
 
-// CoinGecko free API - no rate limits
 const cache = new Map<string, { data: CryptoPrice[]; timestamp: number }>()
 const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
 
-const coinGeckoMap: Record<string, string> = {
-  'BTC/USD': 'bitcoin',
-  'ETH/USD': 'ethereum',
-  'BCH/USD': 'bitcoin-cash',
-  'XNG/USD': 'tether', // placeholder
+const finnhubSymbolMap: Record<string, string> = {
+  'BTC/USD': 'BINANCE:BTCUSDT',
+  'ETH/USD': 'BINANCE:ETHUSDT',
+  'BCH/USD': 'BINANCE:BCHUSDT',
+  'XRP/USD': 'BINANCE:XRPUSDT',
+  'LTC/USD': 'BINANCE:LTCUSDT',
 }
 
-async function fetchCryptoFromCoinGecko(symbols: string[]): Promise<CryptoPrice[]> {
+async function fetchCryptoFromFinnhub(symbol: string): Promise<CryptoPrice | null> {
+  try {
+    const finnhubSymbol = finnhubSymbolMap[symbol] || `BINANCE:${symbol.replace('/', '')}USDT`
+    const url = `https://finnhub.io/api/v1/quote?symbol=${finnhubSymbol}&token=${FINNHUB_API_KEY}`
+
+    const response = await fetch(url)
+    const data = await response.json()
+
+    if (data.c && data.c > 0) {
+      return {
+        symbol,
+        price: data.c,
+        marketCap: 0,
+        volume24h: 0,
+        change24h: data.d || 0,
+        changePercent24h: data.dp || 0,
+        timestamp: new Date().toISOString(),
+        dataSource: 'LIVE',
+      }
+    }
+  } catch (error) {
+    console.error(`Finnhub error for ${symbol}:`, error)
+  }
+  return null
+}
+
+async function fetchCryptoData(symbols: string[]): Promise<CryptoPrice[]> {
   const results: CryptoPrice[] = []
 
   for (const symbol of symbols) {
@@ -34,32 +62,30 @@ async function fetchCryptoFromCoinGecko(symbols: string[]): Promise<CryptoPrice[
       continue
     }
 
-    try {
-      const coinId = coinGeckoMap[symbol] || symbol.split('/')[0].toLowerCase()
-      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true`
+    let priceData = await fetchCryptoFromFinnhub(symbol)
 
-      const response = await fetch(url)
-      const data = await response.json()
-
-      if (data[coinId]) {
-        const coin = data[coinId]
-        const price: CryptoPrice = {
-          symbol,
-          price: coin.usd,
-          marketCap: coin.usd_market_cap || 0,
-          volume24h: coin.usd_24h_vol || 0,
-          change24h: coin.usd * (coin.usd_24h_change / 100),
-          changePercent24h: coin.usd_24h_change || 0,
-          timestamp: new Date().toISOString(),
-          dataSource: 'LIVE',
-        }
-
-        results.push(price)
-        cache.set(cacheKey, { data: [price], timestamp: Date.now() })
+    // Fallback to demo data
+    if (!priceData) {
+      const basePrices: Record<string, number> = {
+        'BTC/USD': 45000,
+        'ETH/USD': 2500,
+        'BCH/USD': 300,
       }
-    } catch (error) {
-      console.error(`Error fetching ${symbol}:`, error)
+      const basePrice = basePrices[symbol] || 100
+      priceData = {
+        symbol,
+        price: basePrice + (Math.random() - 0.5) * (basePrice * 0.02),
+        marketCap: 0,
+        volume24h: 0,
+        change24h: (Math.random() - 0.5) * (basePrice * 0.01),
+        changePercent24h: (Math.random() - 0.5) * 2,
+        timestamp: new Date().toISOString(),
+        dataSource: 'DEMO',
+      }
     }
+
+    results.push(priceData)
+    cache.set(cacheKey, { data: [priceData], timestamp: Date.now() })
   }
 
   return results
@@ -74,7 +100,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const data = await fetchCryptoFromCoinGecko(symbols)
+    const data = await fetchCryptoData(symbols)
     return NextResponse.json(data)
   } catch (error) {
     console.error('Crypto API error:', error)
