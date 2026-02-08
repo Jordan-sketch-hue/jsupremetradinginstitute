@@ -427,22 +427,22 @@ export default function TrendsPage() {
                         : 'bg-gradient-to-r from-gray-500 to-gray-700 text-white'
                     }`}
                   >
-                    {asset.dataSource === 'LIVE' ? 'ðŸŸ¢ LIVE' : 'DEMO'}
+                    {asset.dataSource === 'LIVE' ? 'LIVE' : 'DEMO'}
                   </div>
 
                   {asset.technicals.confidence >= 75 && (
                     <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 text-white">
-                      â­ HIGH
+                      HIGH
                     </div>
                   )}
                   {asset.confidenceTier === 'MEDIUM' && (
                     <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-400 to-blue-600 text-white">
-                      ðŸ“Š MEDIUM
+                      MEDIUM
                     </div>
                   )}
                   {asset.confidenceTier === 'LOW' && (
                     <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 text-white">
-                      âš  LOWER
+                      LOWER
                     </div>
                   )}
                 </div>
@@ -538,10 +538,10 @@ export default function TrendsPage() {
                 >
                   <div className="font-semibold mb-1">
                     {asset.technicals.signal === 'BUY'
-                      ? 'âœ“ Entry Long Setup'
+                      ? 'Entry Long Setup'
                       : asset.technicals.signal === 'SELL'
-                        ? 'âœ— Entry Short Setup'
-                        : 'âŠ˜ Wait for Confirmation'}
+                        ? 'Entry Short Setup'
+                        : 'Wait for Confirmation'}
                   </div>
                   <div className="text-slate-300 text-xs">
                     {asset.technicals.signal === 'BUY'
@@ -552,7 +552,7 @@ export default function TrendsPage() {
                     TP Range:{' '}
                     {asset.takeProfitTargets
                       .map(target => `${target.label} ${target.value}`)
-                      .join(' â€¢ ')}
+                      .join(' | ')}
                   </div>
                 </div>
 
