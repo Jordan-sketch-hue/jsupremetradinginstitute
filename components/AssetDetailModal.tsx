@@ -70,7 +70,7 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4 overflow-y-auto"
       onClick={onClose}
     >
       <div
