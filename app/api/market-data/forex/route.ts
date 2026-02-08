@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// AlphaVantage free tier: 5 calls/min, 500/day
-// Multiple API keys for rotation
-const ALPHA_VANTAGE_KEYS = [
-  process.env.ALPHA_VANTAGE_API_KEY || 'demo',
-  process.env.ALPHA_VANTAGE_API_KEY_2 || '',
-  process.env.ALPHA_VANTAGE_API_KEY_3 || '',
-].filter(key => key && key !== '')
-
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'sandbox'
+const FCS_API_KEY = process.env.FCS_API_KEY || ''
+const ALLTICK_API_KEY = process.env.ALLTICK_API_KEY || ''
 
 interface ForexPrice {
   symbol: string
@@ -22,9 +16,40 @@ interface ForexPrice {
 
 // Cache with TTL to respect rate limits
 const cache = new Map<string, { data: ForexPrice[]; timestamp: number }>()
-const previousPrices = new Map<string, number>() // Store previous prices for change calculation
-const CACHE_TTL = 60 * 1000 // 1 minute
-let currentKeyIndex = 0
+const previousPrices = new Map<string, number>()
+const CACHE_TTL = 30 * 1000 // 30 seconds for fresh data
+
+async function fetchForexFromFCS(symbol: string): Promise<ForexPrice | null> {
+  if (!FCS_API_KEY) return null
+
+  try {
+    // FCS uses format like EUR/USD
+    const formatted = symbol.includes('/') ? symbol : `${symbol.slice(0, 3)}/${symbol.slice(3)}`
+    const url = `https://fcsapi.com/api-v3/forex/latest?symbol=${formatted}&access_key=${FCS_API_KEY}`
+
+    const response = await fetch(url)
+    const data = await response.json()
+
+    if (data.status && data.response && data.response.length > 0) {
+      const price = parseFloat(data.response[0].price || data.response[0].c)
+      const change = parseFloat(data.response[0].ch || 0)
+      const changePercent = parseFloat(data.response[0].cp || 0)
+
+      return {
+        symbol,
+        bid: price * 0.9999,
+        ask: price * 1.0001,
+        timestamp: new Date().toISOString(),
+        change,
+        changePercent,
+        dataSource: 'LIVE',
+      }
+    }
+  } catch (error) {
+    console.error(`FCS error for ${symbol}:`, error)
+  }
+  return null
+}
 
 async function fetchForexFromFinnhub(symbol: string): Promise<ForexPrice | null> {
   try {
@@ -145,7 +170,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const data = await fetchForexFromAlphaVantage(symbols)
+    const data = await fetchForexData(symbols)
     return NextResponse.json(data)
   } catch (error) {
     console.error('Forex API error:', error)
