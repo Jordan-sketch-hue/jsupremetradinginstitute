@@ -30,35 +30,50 @@ const fcsSymbolMap: Record<string, string> = {
   WTI: 'WTIUSD',
 }
 
-const allTickSymbolMap: Record<string, string> = {
-  XAUUSD: 'GOLD',
-  XAGUSD: 'Silver',
-  XPTUSD: 'Platinum',
-  WTI: 'USOIL',
+const allTickSymbolCandidates: Record<string, string[]> = {
+  XAUUSD: ['XAUUSD', 'GOLD'],
+  XAGUSD: ['XAGUSD', 'Silver', 'SILVER'],
+  XPTUSD: ['XPTUSD', 'Platinum', 'PLATINUM'],
+  WTI: ['WTI', 'WTIUSD', 'USOIL', 'UKOIL'],
 }
 
 async function fetchCommodityFromAllTick(symbol: string): Promise<CommodityPrice | null> {
   if (!ALLTICK_API_KEY) return null
 
   try {
-    const code = allTickSymbolMap[symbol] || symbol.replace('/', '')
+    const candidates = allTickSymbolCandidates[symbol] || [symbol.replace('/', '')]
     const query = encodeURIComponent(
       JSON.stringify({
-        trace: `commodity-${code}-${Date.now()}`,
-        data: { symbol_list: [{ code }] },
+        trace: `commodity-${symbol}-${Date.now()}`,
+        data: { symbol_list: candidates.map(code => ({ code })) },
       })
     )
     const url = `https://quote.alltick.co/quote-b-api/trade-tick?token=${ALLTICK_API_KEY}&query=${query}`
 
     const response = await fetch(url)
     const data = await response.json()
-    const tick = data?.data?.tick_list?.[0]
-    const price = parseFloat(tick?.price)
+    const tickList: Array<{ code?: string; price?: string }> = data?.data?.tick_list || []
+    const tickMap = new Map<string, string>()
+    tickList.forEach(tick => {
+      if (tick?.code && tick?.price) {
+        tickMap.set(tick.code, tick.price)
+      }
+    })
 
-    if (Number.isFinite(price) && price > 0) {
+    let matchedPrice: number | null = null
+    for (const candidate of candidates) {
+      const priceValue = tickMap.get(candidate)
+      const price = priceValue ? parseFloat(priceValue) : NaN
+      if (Number.isFinite(price) && price > 0) {
+        matchedPrice = price
+        break
+      }
+    }
+
+    if (matchedPrice) {
       return {
         symbol,
-        price,
+        price: matchedPrice,
         change: 0,
         changePercent: 0,
         timestamp: new Date().toISOString(),
