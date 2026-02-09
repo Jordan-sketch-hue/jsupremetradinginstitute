@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'sandbox'
 const FCS_API_KEY = process.env.FCS_API_KEY || ''
+const ALLTICK_API_KEY = process.env.ALLTICK_API_KEY || ''
 
 interface CommodityPrice {
   symbol: string
@@ -27,6 +28,48 @@ const fcsSymbolMap: Record<string, string> = {
   XAGUSD: 'XAGUSD',
   XPTUSD: 'XPTUSD',
   WTI: 'WTIUSD',
+}
+
+const allTickSymbolMap: Record<string, string> = {
+  XAUUSD: 'GOLD',
+  XAGUSD: 'Silver',
+  XPTUSD: 'Platinum',
+  WTI: 'USOIL',
+}
+
+async function fetchCommodityFromAllTick(symbol: string): Promise<CommodityPrice | null> {
+  if (!ALLTICK_API_KEY) return null
+
+  try {
+    const code = allTickSymbolMap[symbol] || symbol.replace('/', '')
+    const query = encodeURIComponent(
+      JSON.stringify({
+        trace: `commodity-${code}-${Date.now()}`,
+        data: { symbol_list: [{ code }] },
+      })
+    )
+    const url = `https://quote.alltick.co/quote-b-api/trade-tick?token=${ALLTICK_API_KEY}&query=${query}`
+
+    const response = await fetch(url)
+    const data = await response.json()
+    const tick = data?.data?.tick_list?.[0]
+    const price = parseFloat(tick?.price)
+
+    if (Number.isFinite(price) && price > 0) {
+      return {
+        symbol,
+        price,
+        change: 0,
+        changePercent: 0,
+        timestamp: new Date().toISOString(),
+        dataSource: 'LIVE',
+      }
+    }
+  } catch (error) {
+    console.error(`AllTick error for ${symbol}:`, error)
+  }
+
+  return null
 }
 
 async function fetchCommodityFromFCS(symbol: string): Promise<CommodityPrice | null> {
@@ -107,7 +150,11 @@ export async function GET(request: NextRequest) {
       continue
     }
 
-    let priceData = await fetchCommodityFromFCS(symbol)
+    let priceData = await fetchCommodityFromAllTick(symbol)
+
+    if (!priceData) {
+      priceData = await fetchCommodityFromFCS(symbol)
+    }
 
     if (!priceData) {
       priceData = await fetchCommodityFromFinnhub(symbol)

@@ -19,6 +19,48 @@ const cache = new Map<string, { data: ForexPrice[]; timestamp: number }>()
 const previousPrices = new Map<string, number>()
 const CACHE_TTL = 30 * 1000 // 30 seconds for fresh data
 
+async function fetchForexFromAllTick(symbol: string): Promise<ForexPrice | null> {
+  if (!ALLTICK_API_KEY) return null
+
+  try {
+    const code = symbol.replace('/', '')
+    const query = encodeURIComponent(
+      JSON.stringify({
+        trace: `forex-${code}-${Date.now()}`,
+        data: { symbol_list: [{ code }] },
+      })
+    )
+    const url = `https://quote.alltick.co/quote-b-api/trade-tick?token=${ALLTICK_API_KEY}&query=${query}`
+
+    const response = await fetch(url)
+    const data = await response.json()
+    const tick = data?.data?.tick_list?.[0]
+    const price = parseFloat(tick?.price)
+
+    if (Number.isFinite(price) && price > 0) {
+      const previousPrice = previousPrices.get(symbol)
+      const change = previousPrice ? price - previousPrice : 0
+      const changePercent = previousPrice ? ((price - previousPrice) / previousPrice) * 100 : 0
+
+      previousPrices.set(symbol, price)
+
+      return {
+        symbol,
+        bid: price * 0.9999,
+        ask: price * 1.0001,
+        timestamp: new Date().toISOString(),
+        change,
+        changePercent,
+        dataSource: 'LIVE',
+      }
+    }
+  } catch (error) {
+    console.error(`AllTick error for ${symbol}:`, error)
+  }
+
+  return null
+}
+
 async function fetchForexFromFCS(symbol: string): Promise<ForexPrice | null> {
   if (!FCS_API_KEY) return null
 
@@ -93,8 +135,12 @@ async function fetchForexData(symbols: string[]): Promise<ForexPrice[]> {
       continue
     }
 
-    // Priority: FCS → Finnhub → Demo
-    let priceData = await fetchForexFromFCS(symbol)
+    // Priority: AllTick → FCS → Finnhub → Demo
+    let priceData = await fetchForexFromAllTick(symbol)
+
+    if (!priceData) {
+      priceData = await fetchForexFromFCS(symbol)
+    }
 
     if (!priceData) {
       priceData = await fetchForexFromFinnhub(symbol)
