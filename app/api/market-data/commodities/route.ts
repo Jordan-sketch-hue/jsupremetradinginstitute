@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'sandbox'
+const FCS_API_KEY = process.env.FCS_API_KEY || ''
 
 interface CommodityPrice {
   symbol: string
@@ -19,6 +20,48 @@ const finnhubSymbolMap: Record<string, string> = {
   XAGUSD: 'OANDA:XAG_USD', // Silver
   XPTUSD: 'OANDA:XPT_USD', // Platinum
   WTI: 'OANDA:WTICO_USD', // WTI Crude Oil
+}
+
+const fcsSymbolMap: Record<string, string> = {
+  XAUUSD: 'XAUUSD',
+  XAGUSD: 'XAGUSD',
+  XPTUSD: 'XPTUSD',
+  WTI: 'WTIUSD',
+}
+
+async function fetchCommodityFromFCS(symbol: string): Promise<CommodityPrice | null> {
+  if (!FCS_API_KEY) return null
+
+  try {
+    const fcsSymbol = fcsSymbolMap[symbol] || symbol.replace('/', '')
+    const url = `https://api-v4.fcsapi.com/forex/latest?symbol=${fcsSymbol}&access_key=${FCS_API_KEY}`
+
+    const response = await fetch(url)
+    const data = await response.json()
+
+    if (data.status && Array.isArray(data.response) && data.response.length > 0) {
+      const priceEntry = data.response[0]
+      const active = priceEntry.active || {}
+      const currentPrice = parseFloat(active.c)
+      const change = parseFloat(active.ch || 0)
+      const changePercent = parseFloat(active.chp || 0)
+
+      if (Number.isFinite(currentPrice) && currentPrice > 0) {
+        return {
+          symbol,
+          price: currentPrice,
+          change,
+          changePercent,
+          timestamp: new Date().toISOString(),
+          dataSource: 'LIVE',
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`FCS error for ${symbol}:`, error)
+  }
+
+  return null
 }
 
 async function fetchCommodityFromFinnhub(symbol: string): Promise<CommodityPrice | null> {
@@ -64,7 +107,11 @@ export async function GET(request: NextRequest) {
       continue
     }
 
-    let priceData = await fetchCommodityFromFinnhub(symbol)
+    let priceData = await fetchCommodityFromFCS(symbol)
+
+    if (!priceData) {
+      priceData = await fetchCommodityFromFinnhub(symbol)
+    }
 
     // Fallback to demo data if API fails
     if (!priceData) {
