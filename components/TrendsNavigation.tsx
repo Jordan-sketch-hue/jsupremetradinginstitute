@@ -12,6 +12,8 @@ interface TrendsSection {
 }
 
 const TRENDS_SECTIONS: TrendsSection[] = [
+  { id: 'overview', label: 'Overview', category: 'forex', icon: '🧭' },
+  { id: 'signals', label: 'Live Signals', category: 'forex', icon: '🧠' },
   { id: 'forex', label: 'Forex Pairs', category: 'forex', icon: '💱' },
   { id: 'crypto', label: 'Crypto', category: 'crypto', icon: '₿' },
   { id: 'indices', label: 'Indices', category: 'indices', icon: '📊' },

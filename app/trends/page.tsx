@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, GraduationCap, Tv } from 'lucide-react'
 import Link from 'next/link'
 import { TechnicalIndicators } from '@/lib/technicalAnalysis'
 import AssetDetailModal from '@/components/AssetDetailModal'
@@ -136,6 +136,29 @@ export default function TrendsPage() {
   const [selectedTradeForConfirm, setSelectedTradeForConfirm] = useState<any>(null)
   const [loadingTrade, setLoadingTrade] = useState(false)
   const [sectionFilter, setSectionFilter] = useState<'overview' | 'debrief' | 'signals'>('overview')
+
+  const handleSectionNavigate = (sectionId: string) => {
+    setActiveSection(sectionId)
+
+    if (sectionId === 'overview') {
+      setSectionFilter('overview')
+      return
+    }
+
+    if (sectionId === 'debrief') {
+      setSectionFilter('debrief')
+      return
+    }
+
+    if (['signals', 'forex', 'crypto', 'indices', 'commodities'].includes(sectionId)) {
+      setSectionFilter('signals')
+      return
+    }
+
+    if (sectionId === 'failures') {
+      setSectionFilter('overview')
+    }
+  }
 
   useEffect(() => {
     const cacheKey = 'trends-assets-cache'
@@ -824,10 +847,40 @@ export default function TrendsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <TrendsNavigation onNavigate={setActiveSection} activeSection={activeSection} />
+      <TrendsNavigation onNavigate={handleSectionNavigate} activeSection={activeSection} />
 
       <div className="pt-8">
         <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-4 rounded-xl border border-slate-700 bg-slate-900/70 p-3 sticky top-14 z-30">
+            <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
+              Jump To Section
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  { key: 'overview', label: 'Live Market Overview' },
+                  { key: 'debrief', label: 'Daily Debrief' },
+                  { key: 'signals', label: 'Live Signals' },
+                ] as const
+              ).map(option => (
+                <button
+                  key={option.key}
+                  onClick={() => {
+                    setSectionFilter(option.key)
+                    const el = document.getElementById(option.key)
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    sectionFilter === option.key
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                      : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {/* Market Overview Section */}
           <div
             id="overview"
@@ -845,14 +898,16 @@ export default function TrendsPage() {
               <div className="flex gap-2">
                 <Link
                   href="/guides/tradingview"
-                  className="px-3 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-xs text-slate-300 hover:bg-slate-600 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-xs text-slate-300 hover:bg-slate-600 transition-colors"
                 >
+                  <Tv className="h-3.5 w-3.5 text-slate-300" />
                   TV Guide
                 </Link>
                 <Link
                   href="/learning-path"
-                  className="px-3 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-xs text-indigo-300 hover:bg-indigo-500/30 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-xs text-indigo-300 hover:bg-indigo-500/30 transition-colors"
                 >
+                  <GraduationCap className="h-3.5 w-3.5 text-indigo-300" />
                   Learning Path
                 </Link>
               </div>
@@ -1016,33 +1071,6 @@ export default function TrendsPage() {
               >
                 Psychology Course
               </Link>
-            </div>
-          </div>
-
-          <div className="mb-6 rounded-xl border border-slate-700 bg-slate-900/70 p-3">
-            <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
-              View Section
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  { key: 'overview', label: 'Live Market Overview' },
-                  { key: 'debrief', label: 'Daily Debrief' },
-                  { key: 'signals', label: 'Live Signals' },
-                ] as const
-              ).map(option => (
-                <button
-                  key={option.key}
-                  onClick={() => setSectionFilter(option.key)}
-                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    sectionFilter === option.key
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
-                      : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
             </div>
           </div>
 
