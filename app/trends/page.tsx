@@ -31,6 +31,13 @@ interface LiveFailureEntry {
   timestamp: string
 }
 
+interface DeploymentInfo {
+  commitSha: string
+  commitShort: string
+  environment: string
+  url: string
+}
+
 const ASSETS_CONFIG: Array<{
   symbol: string
   name: string
@@ -69,6 +76,7 @@ export default function TrendsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<string>('')
   const [liveFailures, setLiveFailures] = useState<LiveFailureEntry[]>([])
+  const [deploymentInfo, setDeploymentInfo] = useState<DeploymentInfo | null>(null)
 
   useEffect(() => {
     const cacheKey = 'trends-assets-cache'
@@ -151,9 +159,11 @@ export default function TrendsPage() {
           if (reportResponse.ok) {
             const reportPayload = await reportResponse.json()
             setLiveFailures(Array.isArray(reportPayload?.entries) ? reportPayload.entries : [])
+            setDeploymentInfo(reportPayload?.deployment || null)
           }
         } catch {
           setLiveFailures([])
+          setDeploymentInfo(null)
         }
 
         const cryptoData: Record<string, any> = {}
@@ -379,6 +389,19 @@ export default function TrendsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pt-24">
       <div className="max-w-7xl mx-auto px-4">
+        <div className="mb-4 p-3 rounded-xl border border-slate-700 bg-slate-900/70 text-slate-200 text-xs flex flex-wrap gap-3 items-center">
+          <span className="font-semibold text-emerald-300">Live Build</span>
+          <span>
+            Commit: <span className="text-white">{deploymentInfo?.commitShort || 'local'}</span>
+          </span>
+          <span>
+            Env: <span className="text-white">{deploymentInfo?.environment || 'unknown'}</span>
+          </span>
+          <span>
+            Updated: <span className="text-white">{lastUpdate || 'n/a'}</span>
+          </span>
+        </div>
+
         {liveFailures.length > 0 && (
           <div className="mb-4 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-200">
             <h3 className="font-bold mb-2">Live Data Failure Report</h3>
