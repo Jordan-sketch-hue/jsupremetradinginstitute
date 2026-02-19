@@ -1,7 +1,3 @@
-import { spawn } from 'child_process'
-import fs from 'fs'
-import path from 'path'
-
 type Provider = 'TWELVE_DATA' | 'YAHOO'
 
 export interface UnifiedQuote {
@@ -25,27 +21,6 @@ export interface UnifiedHistory {
   provider: Provider
 }
 
-interface YfinanceQuoteResult {
-  ok: boolean
-  price?: unknown
-  change?: unknown
-  changePercent?: unknown
-}
-
-interface YfinanceHistoryCandle {
-  timestamp?: unknown
-  open?: unknown
-  high?: unknown
-  low?: unknown
-  close?: unknown
-  volume?: unknown
-}
-
-interface YfinanceHistoryResult {
-  ok: boolean
-  candles?: YfinanceHistoryCandle[]
-}
-
 interface TwelveDataTimeSeriesEntry {
   datetime?: string
   open?: unknown
@@ -58,6 +33,33 @@ interface TwelveDataTimeSeriesEntry {
 interface TwelveDataTimeSeriesResponse {
   status?: string
   values?: TwelveDataTimeSeriesEntry[]
+}
+
+interface YahooChartMeta {
+  regularMarketPrice?: number
+  previousClose?: number
+}
+
+interface YahooChartQuote {
+  open?: Array<number | null>
+  high?: Array<number | null>
+  low?: Array<number | null>
+  close?: Array<number | null>
+  volume?: Array<number | null>
+}
+
+interface YahooChartResult {
+  meta?: YahooChartMeta
+  timestamp?: number[]
+  indicators?: {
+    quote?: YahooChartQuote[]
+  }
+}
+
+interface YahooChartResponse {
+  chart?: {
+    result?: YahooChartResult[]
+  }
 }
 
 const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY || ''
@@ -182,56 +184,45 @@ async function fetchTwelveDataQuote(symbol: string): Promise<UnifiedQuote | null
   }
 }
 
-async function runPythonYfinance(args: string[]): Promise<unknown | null> {
-  const scriptPath = path.join(process.cwd(), 'scripts', 'yfinance_fallback.py')
-  const venvPythonWindows = path.join(process.cwd(), '.venv', 'Scripts', 'python.exe')
-  const venvPythonUnix = path.join(process.cwd(), '.venv', 'bin', 'python')
+async function fetchYahooChart(
+  ticker: string,
+  interval: string,
+  range: string
+): Promise<YahooChartResult | null> {
+  try {
+    const url =
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}` +
+      `?interval=${encodeURIComponent(interval)}&range=${encodeURIComponent(range)}` +
+      '&includePrePost=false&events=div%2Csplits'
 
-  const attempts: Array<{ cmd: string; cmdArgs: string[] }> = [
-    ...(fs.existsSync(venvPythonWindows)
-      ? [{ cmd: venvPythonWindows, cmdArgs: [scriptPath, ...args] }]
-      : []),
-    ...(fs.existsSync(venvPythonUnix)
-      ? [{ cmd: venvPythonUnix, cmdArgs: [scriptPath, ...args] }]
-      : []),
-    { cmd: 'python3', cmdArgs: [scriptPath, ...args] },
-    { cmd: 'python', cmdArgs: [scriptPath, ...args] },
-    { cmd: 'py', cmdArgs: ['-3', scriptPath, ...args] },
-    { cmd: 'py', cmdArgs: [scriptPath, ...args] },
-  ]
-
-  for (const attempt of attempts) {
-    const result = await new Promise<{ stdout: string; stderr: string; code: number }>(resolve => {
-      const child = spawn(attempt.cmd, attempt.cmdArgs, {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      })
-
-      let stdout = ''
-      let stderr = ''
-
-      child.stdout.on('data', data => {
-        stdout += String(data)
-      })
-
-      child.stderr.on('data', data => {
-        stderr += String(data)
-      })
-
-      child.on('error', err => {
-        resolve({ stdout: '', stderr: String(err), code: -1 })
-      })
-
-      child.on('close', code => {
-        resolve({ stdout, stderr, code: code ?? 1 })
-      })
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Mozilla/5.0',
+      },
     })
 
-    if (result.code === 0 && result.stdout.trim()) {
-      try {
-        return JSON.parse(result.stdout)
-      } catch {
-        return null
-      }
+    if (!response.ok) {
+      return null
+    }
+
+    const data = (await response.json()) as YahooChartResponse
+    const result = data?.chart?.result?.[0]
+    return result || null
+  } catch (error) {
+    console.error(`Yahoo chart error for ${ticker}:`, error)
+    return null
+  }
+}
+
+function getLastFinite(values: Array<number | null> | undefined): number | null {
+  if (!Array.isArray(values)) return null
+
+  for (let index = values.length - 1; index >= 0; index--) {
+    const value = values[index]
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value
     }
   }
 
@@ -239,14 +230,19 @@ async function runPythonYfinance(args: string[]): Promise<unknown | null> {
 }
 
 async function fetchYahooQuote(ticker: string): Promise<UnifiedQuote | null> {
-  const result = (await runPythonYfinance(['quote', ticker])) as YfinanceQuoteResult | null
-  if (!result?.ok) return null
+  const result = await fetchYahooChart(ticker, '1d', '5d')
+  if (!result) return null
 
-  const price = toNumber(result.price)
-  const change = toNumber(result.change) ?? 0
-  const changePercent = toNumber(result.changePercent) ?? 0
+  const quote = result.indicators?.quote?.[0]
+  const closePrice = getLastFinite(quote?.close)
+  const metaPrice = toNumber(result.meta?.regularMarketPrice)
+  const previousClose = toNumber(result.meta?.previousClose)
+  const price = metaPrice ?? closePrice
 
   if (!price || price <= 0) return null
+
+  const change = previousClose ? price - previousClose : 0
+  const changePercent = previousClose && previousClose !== 0 ? (change / previousClose) * 100 : 0
 
   return {
     price,
@@ -311,24 +307,29 @@ async function fetchYahooHistory(
   assetType: string
 ): Promise<UnifiedHistory | null> {
   const { interval, period } = mapYahooInterval(assetType)
-  const result = (await runPythonYfinance([
-    'history',
-    ticker,
-    interval,
-    period,
-  ])) as YfinanceHistoryResult | null
-  if (!result?.ok || !Array.isArray(result?.candles) || result.candles.length === 0) return null
+  const result = await fetchYahooChart(ticker, interval, period)
+  if (!result) return null
 
-  const candles: UnifiedCandle[] = result.candles
-    .map((entry: YfinanceHistoryCandle) => {
-      const timestamp = toNumber(entry.timestamp)
-      const open = toNumber(entry.open)
-      const high = toNumber(entry.high)
-      const low = toNumber(entry.low)
-      const close = toNumber(entry.close)
-      const volume = toNumber(entry.volume) ?? 0
+  const timestamps = result.timestamp || []
+  const quote = result.indicators?.quote?.[0]
+  const openList = quote?.open || []
+  const highList = quote?.high || []
+  const lowList = quote?.low || []
+  const closeList = quote?.close || []
+  const volumeList = quote?.volume || []
 
-      if (!timestamp || !open || !high || !low || !close) {
+  if (timestamps.length === 0 || closeList.length === 0) return null
+
+  const candles: UnifiedCandle[] = timestamps
+    .map((timestampSeconds, index) => {
+      const timestamp = timestampSeconds * 1000
+      const open = toNumber(openList[index])
+      const high = toNumber(highList[index])
+      const low = toNumber(lowList[index])
+      const close = toNumber(closeList[index])
+      const volume = toNumber(volumeList[index]) ?? 0
+
+      if (!open || !high || !low || !close) {
         return null
       }
 
