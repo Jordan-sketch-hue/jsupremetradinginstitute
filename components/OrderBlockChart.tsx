@@ -30,18 +30,19 @@ export default function OrderBlockChart({
   stopLoss,
   takeProfitTargets,
 }: OrderBlockChartProps) {
-  const STORAGE_KEY = 'order-block-chart-prefs-v1'
+  const STORAGE_KEY = 'order-block-chart-prefs-v2'
   const [chartWidth, setChartWidth] = useState(800)
   const [chartHeight] = useState(400)
   const [chartMode, setChartMode] = useState<'candles' | 'line'>('candles')
   const [obRangeMode, setObRangeMode] = useState<'recent' | 'older' | 'all'>('recent')
-  const [showBullishOB, setShowBullishOB] = useState(true)
-  const [showBearishOB, setShowBearishOB] = useState(true)
-  const [showSupport, setShowSupport] = useState(true)
-  const [showResistance, setShowResistance] = useState(true)
-  const [showTradeLevels, setShowTradeLevels] = useState(true)
-  const [showCurrentPrice, setShowCurrentPrice] = useState(true)
-  const [showLiquiditySweeps, setShowLiquiditySweeps] = useState(true)
+  const [showBullishOB, setShowBullishOB] = useState(false)
+  const [showBearishOB, setShowBearishOB] = useState(false)
+  const [showSupport, setShowSupport] = useState(false)
+  const [showResistance, setShowResistance] = useState(false)
+  const [showEntryTargets, setShowEntryTargets] = useState(true)
+  const [showStopLoss, setShowStopLoss] = useState(false)
+  const [showCurrentPrice, setShowCurrentPrice] = useState(false)
+  const [showLiquiditySweeps, setShowLiquiditySweeps] = useState(false)
 
   useEffect(() => {
     const handleResize = () => setChartWidth(window.innerWidth - 40)
@@ -57,25 +58,10 @@ export default function OrderBlockChart({
       const prefs = JSON.parse(raw) as Partial<{
         chartMode: 'candles' | 'line'
         obRangeMode: 'recent' | 'older' | 'all'
-        showBullishOB: boolean
-        showBearishOB: boolean
-        showSupport: boolean
-        showResistance: boolean
-        showTradeLevels: boolean
-        showCurrentPrice: boolean
-        showLiquiditySweeps: boolean
       }>
 
       if (prefs.chartMode) setChartMode(prefs.chartMode)
       if (prefs.obRangeMode) setObRangeMode(prefs.obRangeMode)
-      if (typeof prefs.showBullishOB === 'boolean') setShowBullishOB(prefs.showBullishOB)
-      if (typeof prefs.showBearishOB === 'boolean') setShowBearishOB(prefs.showBearishOB)
-      if (typeof prefs.showSupport === 'boolean') setShowSupport(prefs.showSupport)
-      if (typeof prefs.showResistance === 'boolean') setShowResistance(prefs.showResistance)
-      if (typeof prefs.showTradeLevels === 'boolean') setShowTradeLevels(prefs.showTradeLevels)
-      if (typeof prefs.showCurrentPrice === 'boolean') setShowCurrentPrice(prefs.showCurrentPrice)
-      if (typeof prefs.showLiquiditySweeps === 'boolean')
-        setShowLiquiditySweeps(prefs.showLiquiditySweeps)
     } catch {
       // ignore bad local storage payload
     }
@@ -88,29 +74,12 @@ export default function OrderBlockChart({
         JSON.stringify({
           chartMode,
           obRangeMode,
-          showBullishOB,
-          showBearishOB,
-          showSupport,
-          showResistance,
-          showTradeLevels,
-          showCurrentPrice,
-          showLiquiditySweeps,
         })
       )
     } catch {
       // ignore storage exceptions
     }
-  }, [
-    chartMode,
-    obRangeMode,
-    showBullishOB,
-    showBearishOB,
-    showSupport,
-    showResistance,
-    showTradeLevels,
-    showCurrentPrice,
-    showLiquiditySweeps,
-  ])
+  }, [chartMode, obRangeMode])
 
   if (candles.length === 0)
     return <div className="text-center p-4 text-slate-400">No data available</div>
@@ -436,14 +405,24 @@ export default function OrderBlockChart({
           Resistance
         </button>
         <button
-          onClick={() => setShowTradeLevels(value => !value)}
+          onClick={() => setShowEntryTargets(value => !value)}
           className={`px-2 py-1 text-xs rounded border ${
-            showTradeLevels
+            showEntryTargets
               ? 'bg-green-500/20 text-green-300 border-green-500/40'
               : 'bg-slate-900 text-slate-400 border-slate-600'
           }`}
         >
-          Entry / TP / SL
+          Entry / TP
+        </button>
+        <button
+          onClick={() => setShowStopLoss(value => !value)}
+          className={`px-2 py-1 text-xs rounded border ${
+            showStopLoss
+              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+              : 'bg-slate-900 text-slate-400 border-slate-600'
+          }`}
+        >
+          Stop Loss
         </button>
         <button
           onClick={() => setShowCurrentPrice(value => !value)}
@@ -542,7 +521,7 @@ export default function OrderBlockChart({
             </>
           )}
 
-          {showTradeLevels && (
+          {showEntryTargets && (
             <>
               <line
                 x1="0"
@@ -555,19 +534,6 @@ export default function OrderBlockChart({
               />
               <text x={8} y={yEntry - 6} fill="#22c55e" fontSize="11" fontWeight="700">
                 Entry
-              </text>
-
-              <line
-                x1="0"
-                y1={yStop}
-                x2={chartWidth}
-                y2={yStop}
-                stroke="#ef4444"
-                strokeWidth="1.5"
-                strokeDasharray="4"
-              />
-              <text x={8} y={yStop - 6} fill="#ef4444" fontSize="11" fontWeight="700">
-                Stop Loss
               </text>
 
               {takeProfitTargets.map(tp => {
@@ -596,6 +562,23 @@ export default function OrderBlockChart({
                   </g>
                 )
               })}
+            </>
+          )}
+
+          {showStopLoss && (
+            <>
+              <line
+                x1="0"
+                y1={yStop}
+                x2={chartWidth}
+                y2={yStop}
+                stroke="#ef4444"
+                strokeWidth="1.5"
+                strokeDasharray="4"
+              />
+              <text x={8} y={yStop - 6} fill="#ef4444" fontSize="11" fontWeight="700">
+                Stop Loss
+              </text>
             </>
           )}
         </svg>

@@ -10,6 +10,27 @@ interface Candle {
   volume: number
 }
 
+function candleLimitForTimeframe(timeframe: string): number {
+  const normalized = timeframe.toLowerCase()
+
+  if (normalized === '1m') return 240
+  if (normalized === '5m') return 300
+  if (normalized === '15m') return 320
+  if (normalized === '30m') return 320
+  if (normalized === '1h') return 360
+  if (normalized === '4h') return 420
+  if (normalized === '1d') return 420
+  if (normalized === '1w') return 520
+  if (normalized === '1mo') return 240
+  if (normalized === '3mo') return 240
+  if (normalized === '6mo') return 240
+  if (normalized === 'ytd') return 320
+  if (normalized === '12mo') return 360
+  if (normalized === 'all') return 720
+
+  return 240
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const rawSymbol = searchParams.get('symbol')
@@ -25,6 +46,7 @@ export async function GET(request: NextRequest) {
   try {
     let candles: Candle[] | null = null
     let dataSource = 'LIVE'
+    const candleLimit = candleLimitForTimeframe(timeframe)
 
     const historical = await getHistoricalCandles(normalizedSymbol, assetType, timeframe)
     if (historical) {
@@ -48,8 +70,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       symbol,
-      candles: candles.slice(-120),
-      count: candles.slice(-120).length,
+      candles: candles.slice(-candleLimit),
+      count: candles.slice(-candleLimit).length,
       timeframe,
       dataSource,
       timestamp: Date.now(),

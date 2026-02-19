@@ -5,7 +5,24 @@ import { X, TrendingUp } from 'lucide-react'
 import OrderBlockChart from './OrderBlockChart'
 import { Candle, OrderBlock } from '@/lib/orderBlockDetection'
 
-const TIMEFRAME_OPTIONS = ['15m', '1h', '4h', '1d'] as const
+const TIMEFRAME_OPTIONS = [
+  { value: '1m', label: '1MIN' },
+  { value: '5m', label: '5MIN' },
+  { value: '15m', label: '15MIN' },
+  { value: '30m', label: '30MIN' },
+  { value: '1h', label: '1HR' },
+  { value: '4h', label: '4HR' },
+  { value: '1d', label: '1D' },
+  { value: '1w', label: '1W' },
+  { value: '1mo', label: '1M' },
+  { value: '3mo', label: '3M' },
+  { value: '6mo', label: '6M' },
+  { value: 'ytd', label: 'YTD' },
+  { value: '12mo', label: '12M' },
+  { value: 'all', label: 'ALL TIME' },
+] as const
+
+type TimeframeValue = (typeof TIMEFRAME_OPTIONS)[number]['value']
 
 interface AnalysisData {
   orderBlocks: OrderBlock[]
@@ -35,7 +52,7 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
   const [loading, setLoading] = useState(true)
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null)
   const [candles, setCandles] = useState<Candle[]>([])
-  const [timeframe, setTimeframe] = useState<(typeof TIMEFRAME_OPTIONS)[number]>('1h')
+  const [timeframe, setTimeframe] = useState<TimeframeValue>('1h')
   const [positionSize, setPositionSize] = useState<number>(1)
   const [error, setError] = useState<string | null>(null)
 
@@ -179,7 +196,9 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
               <div>
                 <h2 className="text-xl md:text-2xl font-bold text-slate-100">{asset.name}</h2>
                 <p className="text-sm text-slate-400">
-                  {asset.symbol} • {timeframe.toUpperCase()}
+                  {asset.symbol} •{' '}
+                  {TIMEFRAME_OPTIONS.find(option => option.value === timeframe)?.label ||
+                    timeframe.toUpperCase()}
                 </p>
               </div>
             </div>
@@ -189,15 +208,15 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
             <span className="text-xs text-slate-400 uppercase tracking-wide">Timeframe</span>
             {TIMEFRAME_OPTIONS.map(option => (
               <button
-                key={option}
-                onClick={() => setTimeframe(option)}
+                key={option.value}
+                onClick={() => setTimeframe(option.value)}
                 className={`px-3 py-1 text-sm rounded border ${
-                  timeframe === option
+                  timeframe === option.value
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                     : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
                 }`}
               >
-                {option.toUpperCase()}
+                {option.label}
               </button>
             ))}
           </div>

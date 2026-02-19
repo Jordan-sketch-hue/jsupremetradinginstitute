@@ -649,9 +649,56 @@ export default function TrendsPage() {
             <span>
               Uses live market data only. No demo values are included in debrief rankings.
             </span>
-            <Link href="/trends" className="text-indigo-300 hover:text-indigo-200 font-semibold">
-              Full trends view
+            <Link
+              href="/trends/debrief"
+              className="text-indigo-300 hover:text-indigo-200 font-semibold"
+            >
+              Full debrief page
             </Link>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-slate-700 bg-slate-900/70 p-4 md:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg md:text-xl font-bold text-white">Growth Catalyst</h2>
+            <span className="text-xs text-slate-400">Execution-focused playbook</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-xs text-emerald-300 font-semibold mb-1">1) HTF Bias</div>
+              <div className="text-xs text-slate-300">
+                Start from 1W/1D to mark accumulation/distribution zones before taking
+                lower-timeframe entries.
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-xs text-violet-300 font-semibold mb-1">
+                2) Manipulation Check
+              </div>
+              <div className="text-xs text-slate-300">
+                Wait for liquidity sweep + reclaim confirmation around key order block areas.
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-xs text-amber-300 font-semibold mb-1">3) Risk Discipline</div>
+              <div className="text-xs text-slate-300">
+                Risk fixed size per trade, avoid adding risk after invalidation, and respect stop
+                placement.
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-xs text-cyan-300 font-semibold mb-1">4) Review Loop</div>
+              <div className="text-xs text-slate-300">
+                Journal entries, outcomes, and missed setups daily to improve execution quality.
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-xs text-slate-200">
+            <span className="font-semibold text-indigo-300">Today’s focus:</span> Select 1-3
+            top-ranked debrief assets, confirm higher-timeframe bias first, then execute only when
+            lower-timeframe confirmation aligns with your risk model.
           </div>
         </div>
 

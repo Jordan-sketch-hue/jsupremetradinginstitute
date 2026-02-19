@@ -166,26 +166,76 @@ function toYahooCryptoTicker(value: string): string {
   return `${clean.slice(0, 3)}-${clean.slice(3, 6)}`
 }
 
-function normalizeTimeframe(timeframe?: string): '15m' | '1h' | '4h' | '1d' {
+type HistoryTimeframe =
+  | '1m'
+  | '5m'
+  | '15m'
+  | '30m'
+  | '1h'
+  | '4h'
+  | '1d'
+  | '1w'
+  | '1mo'
+  | '3mo'
+  | '6mo'
+  | 'ytd'
+  | '12mo'
+  | 'all'
+
+function normalizeTimeframe(timeframe?: string): HistoryTimeframe {
   const value = (timeframe || '').toLowerCase()
-  if (value === '15m' || value === '1h' || value === '4h' || value === '1d') {
+  if (
+    value === '1m' ||
+    value === '5m' ||
+    value === '15m' ||
+    value === '30m' ||
+    value === '1h' ||
+    value === '4h' ||
+    value === '1d' ||
+    value === '1w' ||
+    value === '1mo' ||
+    value === '3mo' ||
+    value === '6mo' ||
+    value === 'ytd' ||
+    value === '12mo' ||
+    value === 'all'
+  ) {
     return value
   }
   return '1h'
 }
 
-function mapTwelveInterval(timeframe?: string): string {
+function mapTwelveInterval(timeframe?: string): { interval: string; outputsize: number } {
   const normalized = normalizeTimeframe(timeframe)
-  if (normalized === '15m') return '15min'
-  if (normalized === '1h') return '1h'
-  if (normalized === '4h') return '4h'
-  return '1day'
+  if (normalized === '1m') return { interval: '1min', outputsize: 360 }
+  if (normalized === '5m') return { interval: '5min', outputsize: 500 }
+  if (normalized === '15m') return { interval: '15min', outputsize: 500 }
+  if (normalized === '30m') return { interval: '30min', outputsize: 500 }
+  if (normalized === '1h') return { interval: '1h', outputsize: 500 }
+  if (normalized === '4h') return { interval: '4h', outputsize: 500 }
+  if (normalized === '1d') return { interval: '1day', outputsize: 500 }
+  if (normalized === '1w') return { interval: '1week', outputsize: 260 }
+  if (normalized === '1mo') return { interval: '1month', outputsize: 240 }
+  if (normalized === '3mo') return { interval: '1month', outputsize: 240 }
+  if (normalized === '6mo') return { interval: '1month', outputsize: 240 }
+  if (normalized === 'ytd') return { interval: '1day', outputsize: 400 }
+  if (normalized === '12mo') return { interval: '1day', outputsize: 500 }
+  return { interval: '1week', outputsize: 520 }
 }
 
 function mapYahooInterval(timeframe?: string): { interval: string; period: string } {
   const normalized = normalizeTimeframe(timeframe)
+  if (normalized === '1m') {
+    return { interval: '1m', period: '5d' }
+  }
+  if (normalized === '5m') {
+    return { interval: '5m', period: '1mo' }
+  }
   if (normalized === '15m') {
     return { interval: '15m', period: '5d' }
+  }
+  if (normalized === '30m') {
+    return { interval: '30m', period: '1mo' }
   }
   if (normalized === '1h') {
     return { interval: '1h', period: '2mo' }
@@ -193,7 +243,28 @@ function mapYahooInterval(timeframe?: string): { interval: string; period: strin
   if (normalized === '4h') {
     return { interval: '1h', period: '6mo' }
   }
-  return { interval: '1d', period: '6mo' }
+  if (normalized === '1d') {
+    return { interval: '1d', period: '6mo' }
+  }
+  if (normalized === '1w') {
+    return { interval: '1wk', period: '5y' }
+  }
+  if (normalized === '1mo') {
+    return { interval: '1mo', period: '10y' }
+  }
+  if (normalized === '3mo') {
+    return { interval: '3mo', period: '10y' }
+  }
+  if (normalized === '6mo') {
+    return { interval: '1mo', period: '10y' }
+  }
+  if (normalized === 'ytd') {
+    return { interval: '1d', period: 'ytd' }
+  }
+  if (normalized === '12mo') {
+    return { interval: '1d', period: '1y' }
+  }
+  return { interval: '1wk', period: 'max' }
 }
 
 async function fetchTwelveDataQuote(
@@ -334,10 +405,10 @@ async function fetchTwelveDataHistory(
   if (!TWELVE_DATA_API_KEY) return null
 
   try {
-    const interval = mapTwelveInterval(timeframe)
+    const mapped = mapTwelveInterval(timeframe)
     const url =
       `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}` +
-      `&interval=${interval}&outputsize=120&apikey=${TWELVE_DATA_API_KEY}`
+      `&interval=${mapped.interval}&outputsize=${mapped.outputsize}&apikey=${TWELVE_DATA_API_KEY}`
 
     const response = await fetch(url, { cache: 'no-store' })
     if (!response.ok) {
