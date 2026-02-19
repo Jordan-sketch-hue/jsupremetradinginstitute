@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'sandbox'
+import { getIndexQuote } from '@/lib/marketDataProvider'
 
 interface IndexPrice {
   symbol: string
@@ -13,41 +12,6 @@ interface IndexPrice {
 
 const cache = new Map<string, { data: IndexPrice[]; timestamp: number }>()
 const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
-
-const finnhubSymbolMap: Record<string, string> = {
-  US500: '^GSPC', // S&P 500
-  US30: '^DJI', // Dow Jones
-  USTEC: '^IXIC', // Nasdaq
-  DE40: '^GDAXI', // DAX
-  UK100: '^FTSE', // FTSE 100
-  JP225: '^N225', // Nikkei
-  HK50: '^HSI', // Hang Seng
-  FR40: '^FCHI', // CAC 40
-}
-
-async function fetchIndexFromFinnhub(symbol: string): Promise<IndexPrice | null> {
-  try {
-    const finnhubSymbol = finnhubSymbolMap[symbol] || symbol
-    const url = `https://finnhub.io/api/v1/quote?symbol=${finnhubSymbol}&token=${FINNHUB_API_KEY}`
-
-    const response = await fetch(url)
-    const data = await response.json()
-
-    if (data.c && data.c > 0) {
-      return {
-        symbol,
-        price: data.c,
-        change: data.d || 0,
-        changePercent: data.dp || 0,
-        timestamp: new Date().toISOString(),
-        dataSource: 'LIVE',
-      }
-    }
-  } catch (error) {
-    console.error(`Finnhub error for ${symbol}:`, error)
-  }
-  return null
-}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -68,7 +32,19 @@ export async function GET(request: NextRequest) {
       continue
     }
 
-    let priceData = await fetchIndexFromFinnhub(symbol)
+    const quote = await getIndexQuote(symbol)
+
+    let priceData: IndexPrice | null = null
+    if (quote) {
+      priceData = {
+        symbol,
+        price: quote.price,
+        change: quote.change,
+        changePercent: quote.changePercent,
+        timestamp: new Date().toISOString(),
+        dataSource: 'LIVE',
+      }
+    }
 
     // Fallback to demo data if API fails
     if (!priceData) {

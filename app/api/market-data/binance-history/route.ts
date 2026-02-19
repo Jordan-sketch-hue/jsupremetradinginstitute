@@ -1,85 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getHistoricalCandles } from '@/lib/marketDataProvider'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
 
 /**
- * Binance Historical Data API
- * Fetches real OHLCV candles from Binance public API (no key required)
- * Used for proper technical analysis and order block detection
+ * Historical Data API (crypto-focused compatibility route)
+ * Uses Twelve Data first, then Yahoo (yfinance) fallback.
  */
 
-interface BinanceKline {
+interface HistoricalKline {
   timestamp: number
   open: number
   high: number
   low: number
   close: number
   volume: number
-}
-
-// Symbol mapping: our format → Binance format
-const SYMBOL_MAP: Record<string, string> = {
-  BTCUSD: 'BTCUSDT',
-  ETHUSD: 'ETHUSDT',
-  SOLUSD: 'SOLUSDT',
-  XRPUSD: 'XRPUSDT',
-  ADAUSD: 'ADAUSDT',
-  DOGEUSD: 'DOGEUSDT',
-  MATICUSD: 'MATICUSDT',
-  LINKUSD: 'LINKUSDT',
-  AVAXUSD: 'AVAXUSDT',
-  ATOMUSD: 'ATOMUSDT',
-}
-
-async function fetchBinanceCandles(
-  symbol: string,
-  interval: string = '1h',
-  limit: number = 100
-): Promise<BinanceKline[] | null> {
-  try {
-    const binanceSymbol = SYMBOL_MAP[symbol] || symbol
-
-    // Binance public API endpoint (no authentication required)
-    const url = `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`
-
-    const response = await fetch(url, {
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!response.ok) {
-      console.error(`Binance API error for ${symbol}: ${response.status}`)
-      return null
-    }
-
-    const data = await response.json()
-
-    if (!Array.isArray(data) || data.length === 0) {
-      console.error(`No Binance data for ${symbol}`)
-      return null
-    }
-
-    // Binance kline format:
-    // [
-    //   [timestamp, open, high, low, close, volume, closeTime, ...]
-    // ]
-    const candles: BinanceKline[] = data.map((kline: any[]) => ({
-      timestamp: kline[0], // Open time in milliseconds
-      open: parseFloat(kline[1]),
-      high: parseFloat(kline[2]),
-      low: parseFloat(kline[3]),
-      close: parseFloat(kline[4]),
-      volume: parseFloat(kline[5]),
-    }))
-
-    return candles
-  } catch (error) {
-    console.error(`Failed to fetch Binance data for ${symbol}:`, error)
-    return null
-  }
 }
 
 export async function GET(request: NextRequest) {
@@ -93,12 +29,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Symbol parameter required' }, { status: 400 })
     }
 
-    const candles = await fetchBinanceCandles(symbol, interval, limit)
+    const normalized = symbol.toUpperCase().replace(/[^A-Z0-9/\-]/g, '')
+    const withSlash = normalized.includes('/')
+      ? normalized
+      : normalized.length >= 6
+        ? `${normalized.slice(0, 3)}/${normalized.slice(3, 6)}`
+        : normalized
 
-    if (!candles) {
+    const history = await getHistoricalCandles(withSlash, 'crypto')
+    const candles: HistoricalKline[] = history?.candles?.slice(-limit) || []
+
+    if (candles.length === 0) {
       return NextResponse.json(
         {
-          error: 'Failed to fetch Binance data',
+          error: 'Failed to fetch historical data',
           symbol,
           dataSource: 'NONE',
         },
@@ -111,11 +55,11 @@ export async function GET(request: NextRequest) {
       interval,
       candles,
       count: candles.length,
-      dataSource: 'BINANCE',
+      dataSource: history?.provider || 'NONE',
       timestamp: Date.now(),
     })
   } catch (error) {
-    console.error('Binance history API error:', error)
+    console.error('Historical API error:', error)
     return NextResponse.json(
       { error: 'Internal server error', details: String(error) },
       { status: 500 }

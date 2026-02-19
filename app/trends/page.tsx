@@ -241,7 +241,7 @@ export default function TrendsPage() {
               stopLoss: `${(forex.bid * 0.99).toFixed(5)}`,
               takeProfit: `${(forex.bid * 1.015).toFixed(5)}`,
               takeProfitTargets: buildTakeProfitTargets(forex.bid, config.type, signal),
-              reasoning: `Live pricing from AlphaVantage API | Updated every 30 seconds`,
+              reasoning: `Live pricing from Twelve Data (Yahoo fallback) | Updated every 30 seconds`,
               lastUpdate: new Date().toISOString(),
             }
           } else if (config.type === 'indices' && indicesData[config.symbol]) {
@@ -274,7 +274,7 @@ export default function TrendsPage() {
               stopLoss: `${(index.price * 0.97).toFixed(2)}`,
               takeProfit: `${(index.price * 1.05).toFixed(2)}`,
               takeProfitTargets: buildTakeProfitTargets(index.price, config.type, signal),
-              reasoning: `Live index data from Finnhub | Real market pricing`,
+              reasoning: `Live index data from Twelve Data (Yahoo fallback) | Real market pricing`,
               lastUpdate: new Date().toISOString(),
             }
           } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
@@ -311,7 +311,7 @@ export default function TrendsPage() {
               stopLoss: `${(commodity.price * 0.93).toFixed(2)}`,
               takeProfit: `${(commodity.price * 1.08).toFixed(2)}`,
               takeProfitTargets: buildTakeProfitTargets(commodity.price, config.type, signal),
-              reasoning: `Live commodity pricing from Finnhub | Market data`,
+              reasoning: `Live commodity pricing from Twelve Data (Yahoo fallback) | Market data`,
               lastUpdate: new Date().toISOString(),
             }
           } else {

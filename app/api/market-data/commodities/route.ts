@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'sandbox'
-const FCS_API_KEY = process.env.FCS_API_KEY || ''
-const ALLTICK_API_KEY = process.env.ALLTICK_API_KEY || ''
+import { getCommodityQuote } from '@/lib/marketDataProvider'
 
 interface CommodityPrice {
   symbol: string
@@ -15,136 +12,6 @@ interface CommodityPrice {
 
 const cache = new Map<string, { data: CommodityPrice[]; timestamp: number }>()
 const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
-
-const finnhubSymbolMap: Record<string, string> = {
-  XAUUSD: 'OANDA:XAU_USD', // Gold
-  XAGUSD: 'OANDA:XAG_USD', // Silver
-  XPTUSD: 'OANDA:XPT_USD', // Platinum
-  WTI: 'OANDA:WTICO_USD', // WTI Crude Oil
-}
-
-const fcsSymbolMap: Record<string, string> = {
-  XAUUSD: 'XAUUSD',
-  XAGUSD: 'XAGUSD',
-  XPTUSD: 'XPTUSD',
-  WTI: 'WTIUSD',
-}
-
-const allTickSymbolCandidates: Record<string, string[]> = {
-  XAUUSD: ['XAUUSD', 'GOLD'],
-  XAGUSD: ['XAGUSD', 'Silver', 'SILVER'],
-  XPTUSD: ['XPTUSD', 'Platinum', 'PLATINUM'],
-  WTI: ['WTI', 'WTIUSD', 'USOIL', 'UKOIL'],
-}
-
-async function fetchCommodityFromAllTick(symbol: string): Promise<CommodityPrice | null> {
-  if (!ALLTICK_API_KEY) return null
-
-  try {
-    const candidates = allTickSymbolCandidates[symbol] || [symbol.replace('/', '')]
-    const query = encodeURIComponent(
-      JSON.stringify({
-        trace: `commodity-${symbol}-${Date.now()}`,
-        data: { symbol_list: candidates.map(code => ({ code })) },
-      })
-    )
-    const url = `https://quote.alltick.co/quote-b-api/trade-tick?token=${ALLTICK_API_KEY}&query=${query}`
-
-    const response = await fetch(url)
-    const data = await response.json()
-    const tickList: Array<{ code?: string; price?: string }> = data?.data?.tick_list || []
-    const tickMap = new Map<string, string>()
-    tickList.forEach(tick => {
-      if (tick?.code && tick?.price) {
-        tickMap.set(tick.code, tick.price)
-      }
-    })
-
-    let matchedPrice: number | null = null
-    for (const candidate of candidates) {
-      const priceValue = tickMap.get(candidate)
-      const price = priceValue ? parseFloat(priceValue) : NaN
-      if (Number.isFinite(price) && price > 0) {
-        matchedPrice = price
-        break
-      }
-    }
-
-    if (matchedPrice) {
-      return {
-        symbol,
-        price: matchedPrice,
-        change: 0,
-        changePercent: 0,
-        timestamp: new Date().toISOString(),
-        dataSource: 'LIVE',
-      }
-    }
-  } catch (error) {
-    console.error(`AllTick error for ${symbol}:`, error)
-  }
-
-  return null
-}
-
-async function fetchCommodityFromFCS(symbol: string): Promise<CommodityPrice | null> {
-  if (!FCS_API_KEY) return null
-
-  try {
-    const fcsSymbol = fcsSymbolMap[symbol] || symbol.replace('/', '')
-    const url = `https://api-v4.fcsapi.com/forex/latest?symbol=${fcsSymbol}&access_key=${FCS_API_KEY}`
-
-    const response = await fetch(url)
-    const data = await response.json()
-
-    if (data.status && Array.isArray(data.response) && data.response.length > 0) {
-      const priceEntry = data.response[0]
-      const active = priceEntry.active || {}
-      const currentPrice = parseFloat(active.c)
-      const change = parseFloat(active.ch || 0)
-      const changePercent = parseFloat(active.chp || 0)
-
-      if (Number.isFinite(currentPrice) && currentPrice > 0) {
-        return {
-          symbol,
-          price: currentPrice,
-          change,
-          changePercent,
-          timestamp: new Date().toISOString(),
-          dataSource: 'LIVE',
-        }
-      }
-    }
-  } catch (error) {
-    console.error(`FCS error for ${symbol}:`, error)
-  }
-
-  return null
-}
-
-async function fetchCommodityFromFinnhub(symbol: string): Promise<CommodityPrice | null> {
-  try {
-    const finnhubSymbol = finnhubSymbolMap[symbol] || symbol
-    const url = `https://finnhub.io/api/v1/quote?symbol=${finnhubSymbol}&token=${FINNHUB_API_KEY}`
-
-    const response = await fetch(url)
-    const data = await response.json()
-
-    if (data.c && data.c > 0) {
-      return {
-        symbol,
-        price: data.c,
-        change: data.d || 0,
-        changePercent: data.dp || 0,
-        timestamp: new Date().toISOString(),
-        dataSource: 'LIVE',
-      }
-    }
-  } catch (error) {
-    console.error(`Finnhub error for ${symbol}:`, error)
-  }
-  return null
-}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -165,14 +32,18 @@ export async function GET(request: NextRequest) {
       continue
     }
 
-    let priceData = await fetchCommodityFromAllTick(symbol)
+    const quote = await getCommodityQuote(symbol)
 
-    if (!priceData) {
-      priceData = await fetchCommodityFromFCS(symbol)
-    }
-
-    if (!priceData) {
-      priceData = await fetchCommodityFromFinnhub(symbol)
+    let priceData: CommodityPrice | null = null
+    if (quote) {
+      priceData = {
+        symbol,
+        price: quote.price,
+        change: quote.change,
+        changePercent: quote.changePercent,
+        timestamp: new Date().toISOString(),
+        dataSource: 'LIVE',
+      }
     }
 
     // Fallback to demo data if API fails

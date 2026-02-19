@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'sandbox'
+import { getCryptoQuote } from '@/lib/marketDataProvider'
 
 interface CryptoPrice {
   symbol: string
@@ -16,40 +15,6 @@ interface CryptoPrice {
 const cache = new Map<string, { data: CryptoPrice[]; timestamp: number }>()
 const CACHE_TTL = 2 * 60 * 1000 // 2 minutes
 
-const finnhubSymbolMap: Record<string, string> = {
-  'BTC/USD': 'BINANCE:BTCUSDT',
-  'ETH/USD': 'BINANCE:ETHUSDT',
-  'BCH/USD': 'BINANCE:BCHUSDT',
-  'XRP/USD': 'BINANCE:XRPUSDT',
-  'LTC/USD': 'BINANCE:LTCUSDT',
-}
-
-async function fetchCryptoFromFinnhub(symbol: string): Promise<CryptoPrice | null> {
-  try {
-    const finnhubSymbol = finnhubSymbolMap[symbol] || `BINANCE:${symbol.replace('/', '')}USDT`
-    const url = `https://finnhub.io/api/v1/quote?symbol=${finnhubSymbol}&token=${FINNHUB_API_KEY}`
-
-    const response = await fetch(url)
-    const data = await response.json()
-
-    if (data.c && data.c > 0) {
-      return {
-        symbol,
-        price: data.c,
-        marketCap: 0,
-        volume24h: 0,
-        change24h: data.d || 0,
-        changePercent24h: data.dp || 0,
-        timestamp: new Date().toISOString(),
-        dataSource: 'LIVE',
-      }
-    }
-  } catch (error) {
-    console.error(`Finnhub error for ${symbol}:`, error)
-  }
-  return null
-}
-
 async function fetchCryptoData(symbols: string[]): Promise<CryptoPrice[]> {
   const results: CryptoPrice[] = []
 
@@ -62,7 +27,21 @@ async function fetchCryptoData(symbols: string[]): Promise<CryptoPrice[]> {
       continue
     }
 
-    let priceData = await fetchCryptoFromFinnhub(symbol)
+    const quote = await getCryptoQuote(symbol)
+
+    let priceData: CryptoPrice | null = null
+    if (quote) {
+      priceData = {
+        symbol,
+        price: quote.price,
+        marketCap: 0,
+        volume24h: 0,
+        change24h: quote.change,
+        changePercent24h: quote.changePercent,
+        timestamp: new Date().toISOString(),
+        dataSource: 'LIVE',
+      }
+    }
 
     // Fallback to demo data
     if (!priceData) {
