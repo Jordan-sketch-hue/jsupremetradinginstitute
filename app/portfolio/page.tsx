@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   AdvancedChartWidget,
@@ -21,18 +21,175 @@ import {
 
 export default function PortfolioPage() {
   const [selectedPair, setSelectedPair] = useState('EURUSD')
+  const [liveQuotes, setLiveQuotes] = useState<
+    Record<string, { price: number; changePercent: number }>
+  >({})
+  const [lastUpdate, setLastUpdate] = useState<string>('')
 
   // Portfolio tracking data
   const portfolioAssets = [
-    { symbol: 'EURUSD', name: 'EUR/USD', status: 'watching', analysis: 'Bullish OB at 1.0845' },
-    { symbol: 'XAUUSD', name: 'Gold', status: 'watching', analysis: 'Accumulation phase active' },
-    { symbol: 'GBPUSD', name: 'GBP/USD', status: 'watching', analysis: 'Liquidity sweep complete' },
-    { symbol: 'BTCUSD', name: 'Bitcoin', status: 'watching', analysis: 'Higher timeframe uptrend' },
-    { symbol: 'ETHUSD', name: 'Ethereum', status: 'watching', analysis: 'Order block mitigation' },
-    { symbol: 'US30', name: 'Dow Jones', status: 'watching', analysis: 'Break of structure' },
-    { symbol: 'XAGUSD', name: 'Silver', status: 'watching', analysis: 'Consolidation at support' },
-    { symbol: 'USTEC', name: 'NASDAQ', status: 'watching', analysis: 'Institutional accumulation' },
+    {
+      symbol: 'EURUSD',
+      name: 'EUR/USD',
+      type: 'forex',
+      status: 'watching',
+      analysis: 'Bullish OB at 1.0845',
+    },
+    {
+      symbol: 'XAUUSD',
+      name: 'Gold',
+      type: 'commodities',
+      status: 'watching',
+      analysis: 'Accumulation phase active',
+    },
+    {
+      symbol: 'GBPUSD',
+      name: 'GBP/USD',
+      type: 'forex',
+      status: 'watching',
+      analysis: 'Liquidity sweep complete',
+    },
+    {
+      symbol: 'BTCUSD',
+      name: 'Bitcoin',
+      type: 'crypto',
+      status: 'watching',
+      analysis: 'Higher timeframe uptrend',
+    },
+    {
+      symbol: 'ETHUSD',
+      name: 'Ethereum',
+      type: 'crypto',
+      status: 'watching',
+      analysis: 'Order block mitigation',
+    },
+    {
+      symbol: 'US30',
+      name: 'Dow Jones',
+      type: 'indices',
+      status: 'watching',
+      analysis: 'Break of structure',
+    },
+    {
+      symbol: 'XAGUSD',
+      name: 'Silver',
+      type: 'commodities',
+      status: 'watching',
+      analysis: 'Consolidation at support',
+    },
+    {
+      symbol: 'USTEC',
+      name: 'NASDAQ',
+      type: 'indices',
+      status: 'watching',
+      analysis: 'Institutional accumulation',
+    },
   ]
+
+  useEffect(() => {
+    let isActive = true
+
+    const parseList = async (response: Response) => {
+      if (!response.ok) return []
+      try {
+        const list = await response.json()
+        return Array.isArray(list) ? list : []
+      } catch {
+        return []
+      }
+    }
+
+    const fetchQuotes = async () => {
+      const forexSymbols = portfolioAssets
+        .filter(asset => asset.type === 'forex')
+        .map(asset => asset.symbol)
+      const cryptoSymbols = portfolioAssets
+        .filter(asset => asset.type === 'crypto')
+        .map(asset => asset.symbol)
+      const indexSymbols = portfolioAssets
+        .filter(asset => asset.type === 'indices')
+        .map(asset => asset.symbol)
+      const commoditySymbols = portfolioAssets
+        .filter(asset => asset.type === 'commodities')
+        .map(asset => asset.symbol)
+
+      try {
+        const [forexRes, cryptoRes, indexRes, commodityRes] = await Promise.all([
+          forexSymbols.length
+            ? fetch(`/api/market-data/forex?symbols=${forexSymbols.join(',')}`)
+            : Promise.resolve(new Response('[]')),
+          cryptoSymbols.length
+            ? fetch(`/api/market-data/crypto?symbols=${cryptoSymbols.join(',')}`)
+            : Promise.resolve(new Response('[]')),
+          indexSymbols.length
+            ? fetch(`/api/market-data/indices?symbols=${indexSymbols.join(',')}`)
+            : Promise.resolve(new Response('[]')),
+          commoditySymbols.length
+            ? fetch(`/api/market-data/commodities?symbols=${commoditySymbols.join(',')}`)
+            : Promise.resolve(new Response('[]')),
+        ])
+
+        const [forexList, cryptoList, indexList, commodityList] = await Promise.all([
+          parseList(forexRes),
+          parseList(cryptoRes),
+          parseList(indexRes),
+          parseList(commodityRes),
+        ])
+
+        const quotes: Record<string, { price: number; changePercent: number }> = {}
+
+        forexList.forEach((item: any) => {
+          if (item?.symbol && item?.bid) {
+            quotes[item.symbol] = {
+              price: item.bid,
+              changePercent: item.changePercent ?? 0,
+            }
+          }
+        })
+
+        cryptoList.forEach((item: any) => {
+          if (item?.symbol && item?.price) {
+            quotes[item.symbol] = {
+              price: item.price,
+              changePercent: item.changePercent24h ?? 0,
+            }
+          }
+        })
+
+        indexList.forEach((item: any) => {
+          if (item?.symbol && item?.price) {
+            quotes[item.symbol] = {
+              price: item.price,
+              changePercent: item.changePercent ?? 0,
+            }
+          }
+        })
+
+        commodityList.forEach((item: any) => {
+          if (item?.symbol && item?.price) {
+            quotes[item.symbol] = {
+              price: item.price,
+              changePercent: item.changePercent ?? 0,
+            }
+          }
+        })
+
+        if (!isActive) return
+        setLiveQuotes(quotes)
+        setLastUpdate(new Date().toLocaleTimeString())
+      } catch (error) {
+        if (!isActive) return
+        setLiveQuotes({})
+      }
+    }
+
+    fetchQuotes()
+    const interval = setInterval(fetchQuotes, 30000)
+    return () => {
+      isActive = false
+      clearInterval(interval)
+    }
+  }, [])
 
   // Real-world market analysis examples
   const marketAnalysis = [
@@ -90,6 +247,12 @@ export default function PortfolioPage() {
     },
   ]
 
+  const formatPrice = (assetType: string, price: number) => {
+    if (assetType === 'forex') return price.toFixed(4)
+    if (assetType === 'crypto') return price.toFixed(2)
+    return price.toFixed(2)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-matte-black via-royal-green/5 to-matte-black py-12 px-4">
       <div className="max-w-7xl mx-auto">
@@ -113,6 +276,7 @@ export default function PortfolioPage() {
           className="bg-gradient-to-r from-royal-green/10 to-royal-emerald/10 border border-royal-green/30 rounded-2xl p-6 md:p-8 mb-12"
         >
           <h2 className="text-2xl font-bold text-white mb-6">Watchlist Assets</h2>
+          <p className="text-xs text-gray-400 mb-4">Live pricing updated {lastUpdate || '...'}.</p>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
             {portfolioAssets.map(asset => (
               <button
@@ -129,6 +293,24 @@ export default function PortfolioPage() {
               >
                 <div className="text-white font-bold text-sm mb-1">{asset.symbol}</div>
                 <div className="text-xs text-gray-400">{asset.name}</div>
+                <div className="text-xs mt-2">
+                  <span className="text-gray-300">
+                    {liveQuotes[asset.symbol]?.price
+                      ? formatPrice(asset.type, liveQuotes[asset.symbol].price)
+                      : '—'}
+                  </span>
+                  <span
+                    className={`ml-2 ${
+                      (liveQuotes[asset.symbol]?.changePercent ?? 0) >= 0
+                        ? 'text-emerald-400'
+                        : 'text-red-400'
+                    }`}
+                  >
+                    {liveQuotes[asset.symbol]
+                      ? `${liveQuotes[asset.symbol].changePercent.toFixed(2)}%`
+                      : ''}
+                  </span>
+                </div>
               </button>
             ))}
           </div>
