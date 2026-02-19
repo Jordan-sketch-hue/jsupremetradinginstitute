@@ -151,7 +151,9 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
   return (
     <div
       className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-2 md:p-4 overflow-y-auto"
+      onClick={onClose}
       onMouseDown={onClose}
+      onTouchStart={onClose}
     >
       <button
         onClick={onClose}
@@ -163,7 +165,9 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
 
       <div
         className="bg-slate-900 rounded-lg shadow-2xl max-w-5xl w-full my-8 border border-slate-700 max-h-[92vh] overflow-y-auto"
+        onClick={event => event.stopPropagation()}
         onMouseDown={event => event.stopPropagation()}
+        onTouchStart={event => event.stopPropagation()}
       >
         {/* Header */}
         <div className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-700">
@@ -423,6 +427,15 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur py-3 mt-2 border-t border-slate-700">
+                <button
+                  onClick={onClose}
+                  className="w-full py-3 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 font-semibold hover:bg-red-500/30"
+                >
+                  Close Order Block View
+                </button>
               </div>
             </>
           )}

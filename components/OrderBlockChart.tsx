@@ -30,20 +30,87 @@ export default function OrderBlockChart({
   stopLoss,
   takeProfitTargets,
 }: OrderBlockChartProps) {
+  const STORAGE_KEY = 'order-block-chart-prefs-v1'
   const [chartWidth, setChartWidth] = useState(800)
   const [chartHeight] = useState(400)
+  const [chartMode, setChartMode] = useState<'candles' | 'line'>('candles')
+  const [obRangeMode, setObRangeMode] = useState<'recent' | 'older' | 'all'>('recent')
   const [showBullishOB, setShowBullishOB] = useState(true)
   const [showBearishOB, setShowBearishOB] = useState(true)
   const [showSupport, setShowSupport] = useState(true)
   const [showResistance, setShowResistance] = useState(true)
   const [showTradeLevels, setShowTradeLevels] = useState(true)
   const [showCurrentPrice, setShowCurrentPrice] = useState(true)
+  const [showLiquiditySweeps, setShowLiquiditySweeps] = useState(true)
 
   useEffect(() => {
     const handleResize = () => setChartWidth(window.innerWidth - 40)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+
+      const prefs = JSON.parse(raw) as Partial<{
+        chartMode: 'candles' | 'line'
+        obRangeMode: 'recent' | 'older' | 'all'
+        showBullishOB: boolean
+        showBearishOB: boolean
+        showSupport: boolean
+        showResistance: boolean
+        showTradeLevels: boolean
+        showCurrentPrice: boolean
+        showLiquiditySweeps: boolean
+      }>
+
+      if (prefs.chartMode) setChartMode(prefs.chartMode)
+      if (prefs.obRangeMode) setObRangeMode(prefs.obRangeMode)
+      if (typeof prefs.showBullishOB === 'boolean') setShowBullishOB(prefs.showBullishOB)
+      if (typeof prefs.showBearishOB === 'boolean') setShowBearishOB(prefs.showBearishOB)
+      if (typeof prefs.showSupport === 'boolean') setShowSupport(prefs.showSupport)
+      if (typeof prefs.showResistance === 'boolean') setShowResistance(prefs.showResistance)
+      if (typeof prefs.showTradeLevels === 'boolean') setShowTradeLevels(prefs.showTradeLevels)
+      if (typeof prefs.showCurrentPrice === 'boolean') setShowCurrentPrice(prefs.showCurrentPrice)
+      if (typeof prefs.showLiquiditySweeps === 'boolean')
+        setShowLiquiditySweeps(prefs.showLiquiditySweeps)
+    } catch {
+      // ignore bad local storage payload
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          chartMode,
+          obRangeMode,
+          showBullishOB,
+          showBearishOB,
+          showSupport,
+          showResistance,
+          showTradeLevels,
+          showCurrentPrice,
+          showLiquiditySweeps,
+        })
+      )
+    } catch {
+      // ignore storage exceptions
+    }
+  }, [
+    chartMode,
+    obRangeMode,
+    showBullishOB,
+    showBearishOB,
+    showSupport,
+    showResistance,
+    showTradeLevels,
+    showCurrentPrice,
+    showLiquiditySweeps,
+  ])
 
   if (candles.length === 0)
     return <div className="text-center p-4 text-slate-400">No data available</div>
@@ -106,8 +173,44 @@ export default function OrderBlockChart({
     )
   })
 
-  const bullishOrderBlocks = orderBlocks.filter(ob => ob.type === 'BULLISH').slice(-6)
-  const bearishOrderBlocks = orderBlocks.filter(ob => ob.type === 'BEARISH').slice(-6)
+  const linePoints = candles
+    .map((candle, index) => `${index * xStep + xStep / 2},${priceToY(candle.close)}`)
+    .join(' ')
+
+  const sortedOrderBlocks = [...orderBlocks].sort((left, right) => left.timestamp - right.timestamp)
+  const recentCut = Math.max(0, sortedOrderBlocks.length - 8)
+  const orderBlocksByRange =
+    obRangeMode === 'recent'
+      ? sortedOrderBlocks.slice(recentCut)
+      : obRangeMode === 'older'
+        ? sortedOrderBlocks.slice(0, recentCut)
+        : sortedOrderBlocks
+
+  const bullishOrderBlocks = orderBlocksByRange.filter(ob => ob.type === 'BULLISH')
+  const bearishOrderBlocks = orderBlocksByRange.filter(ob => ob.type === 'BEARISH')
+
+  const sweepMarkers = candles
+    .map((candle, index) => {
+      if (index < 6) return null
+
+      const lookback = candles.slice(index - 6, index)
+      const swingHigh = Math.max(...lookback.map(item => item.high))
+      const swingLow = Math.min(...lookback.map(item => item.low))
+
+      const isBuySideSweep = candle.high > swingHigh && candle.close < swingHigh
+      const isSellSideSweep = candle.low < swingLow && candle.close > swingLow
+
+      if (!isBuySideSweep && !isSellSideSweep) return null
+
+      return {
+        x: index * xStep + xStep / 2,
+        y: isBuySideSweep ? priceToY(candle.high) - 8 : priceToY(candle.low) + 8,
+        type: isBuySideSweep ? 'BUY_SIDE' : 'SELL_SIDE',
+      }
+    })
+    .filter(
+      (value): value is { x: number; y: number; type: 'BUY_SIDE' | 'SELL_SIDE' } => value !== null
+    )
 
   // Render bullish order blocks
   const bullishObElements = bullishOrderBlocks.map((ob, i) => {
@@ -243,6 +346,56 @@ export default function OrderBlockChart({
 
       <div className="mb-3 flex flex-wrap gap-2">
         <button
+          onClick={() => setChartMode(mode => (mode === 'candles' ? 'line' : 'candles'))}
+          className={`px-2 py-1 text-xs rounded border ${
+            chartMode === 'candles'
+              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+              : 'bg-slate-900 text-slate-400 border-slate-600'
+          }`}
+        >
+          Candlestick
+        </button>
+        <button
+          onClick={() => setChartMode(mode => (mode === 'line' ? 'candles' : 'line'))}
+          className={`px-2 py-1 text-xs rounded border ${
+            chartMode === 'line'
+              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+              : 'bg-slate-900 text-slate-400 border-slate-600'
+          }`}
+        >
+          Line
+        </button>
+        <button
+          onClick={() => setObRangeMode('recent')}
+          className={`px-2 py-1 text-xs rounded border ${
+            obRangeMode === 'recent'
+              ? 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40'
+              : 'bg-slate-900 text-slate-400 border-slate-600'
+          }`}
+        >
+          Recent OBs
+        </button>
+        <button
+          onClick={() => setObRangeMode('older')}
+          className={`px-2 py-1 text-xs rounded border ${
+            obRangeMode === 'older'
+              ? 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40'
+              : 'bg-slate-900 text-slate-400 border-slate-600'
+          }`}
+        >
+          Older OBs
+        </button>
+        <button
+          onClick={() => setObRangeMode('all')}
+          className={`px-2 py-1 text-xs rounded border ${
+            obRangeMode === 'all'
+              ? 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40'
+              : 'bg-slate-900 text-slate-400 border-slate-600'
+          }`}
+        >
+          All OBs
+        </button>
+        <button
           onClick={() => setShowBullishOB(value => !value)}
           className={`px-2 py-1 text-xs rounded border ${
             showBullishOB
@@ -302,6 +455,16 @@ export default function OrderBlockChart({
         >
           Current Price
         </button>
+        <button
+          onClick={() => setShowLiquiditySweeps(value => !value)}
+          className={`px-2 py-1 text-xs rounded border ${
+            showLiquiditySweeps
+              ? 'bg-orange-500/20 text-orange-300 border-orange-500/40'
+              : 'bg-slate-900 text-slate-400 border-slate-600'
+          }`}
+        >
+          Liquidity Sweeps
+        </button>
       </div>
 
       {/* Chart */}
@@ -333,8 +496,33 @@ export default function OrderBlockChart({
           {showSupport && supportElements}
           {showResistance && resistanceElements}
 
-          {/* Candles */}
-          {candleElements}
+          {/* Price representation */}
+          {chartMode === 'candles' ? (
+            candleElements
+          ) : (
+            <polyline points={linePoints} fill="none" stroke="#38bdf8" strokeWidth="2" />
+          )}
+
+          {showLiquiditySweeps &&
+            sweepMarkers.map((marker, index) => (
+              <g key={`sweep-${index}`}>
+                <circle
+                  cx={marker.x}
+                  cy={marker.y}
+                  r="4"
+                  fill={marker.type === 'BUY_SIDE' ? '#f97316' : '#22c55e'}
+                />
+                <text
+                  x={marker.x + 6}
+                  y={marker.y - 6}
+                  fill={marker.type === 'BUY_SIDE' ? '#fb923c' : '#4ade80'}
+                  fontSize="10"
+                  fontWeight="700"
+                >
+                  {marker.type === 'BUY_SIDE' ? 'BSL Sweep' : 'SSL Sweep'}
+                </text>
+              </g>
+            ))}
 
           {/* Current Price Line */}
           {showCurrentPrice && (
@@ -438,6 +626,14 @@ export default function OrderBlockChart({
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 border-2 border-red-500" />
           <span>Stop Loss Line</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-orange-500 rounded-full" />
+          <span>Buy/Sell-side Liquidity Sweep</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 border-2 border-cyan-500" />
+          <span>Chart Mode (Candles/Line)</span>
         </div>
       </div>
 
