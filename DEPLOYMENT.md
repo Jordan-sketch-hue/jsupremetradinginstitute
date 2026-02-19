@@ -1,10 +1,13 @@
 # Deployment Guide - J Supreme Market Institute
 
+Deploy bump: 2026-02-19
+
 ## Quick Start (Recommended)
 
 ### Deploy to Vercel in 3 Steps
 
 1. **Push to GitHub**
+
 ```bash
 git init
 git add .
@@ -30,32 +33,38 @@ git push -u origin main
 ## Manual Deployment
 
 ### Prerequisites
+
 - Node.js 18+ installed
 - Vercel account (free)
 
 ### Step-by-Step
 
 1. **Install Vercel CLI**
+
 ```bash
 npm install -g vercel
 ```
 
 2. **Login**
+
 ```bash
 vercel login
 ```
 
 3. **Navigate to project**
+
 ```bash
 cd c:\Users\jader\jsuprememarketinsititue
 ```
 
 4. **Deploy**
+
 ```bash
 vercel
 ```
 
 Follow the prompts:
+
 - Set up and deploy? **Y**
 - Which scope? Select your account
 - Link to existing project? **N**
@@ -64,6 +73,7 @@ Follow the prompts:
 - Want to override settings? **N**
 
 5. **Production Deployment**
+
 ```bash
 vercel --prod
 ```
@@ -75,6 +85,7 @@ vercel --prod
 If you plan to add advanced features later:
 
 1. Create `.env.local`:
+
 ```env
 NEXT_PUBLIC_SITE_URL=https://yourdomain.vercel.app
 # Add OpenAI key if implementing advanced AI features
@@ -123,12 +134,14 @@ The `vercel.json` is already configured:
 ### Before Deploying
 
 1. **Test Build Locally**
+
 ```bash
 npm run build
 npm run start
 ```
 
 2. **Check for Errors**
+
 ```bash
 npm run lint
 ```
@@ -158,11 +171,13 @@ npm run lint
 ### Add Vercel Analytics (Optional)
 
 1. Install package:
+
 ```bash
 npm install @vercel/analytics
 ```
 
 2. Add to `app/layout.tsx`:
+
 ```tsx
 import { Analytics } from '@vercel/analytics/react'
 
@@ -187,6 +202,7 @@ export default function RootLayout({ children }) {
 **Issue**: TypeScript errors
 
 **Solution**:
+
 ```bash
 npm run build
 # Fix any TypeScript errors shown
@@ -196,7 +212,8 @@ npm run build
 
 **Issue**: Browser compatibility
 
-**Solution**: 
+**Solution**:
+
 - Use Chrome, Edge, or Safari
 - Check microphone permissions
 - Ensure HTTPS (required for Web Speech API)
@@ -204,6 +221,7 @@ npm run build
 ### Slow Load Times
 
 **Solution**:
+
 - Enable Vercel Edge caching
 - Optimize images
 - Lazy load components
@@ -213,11 +231,13 @@ npm run build
 ## Continuous Deployment
 
 Once connected to GitHub, Vercel automatically:
+
 - Builds on every push to `main`
 - Creates preview deployments for PRs
 - Runs production builds
 
 ### Workflow:
+
 ```bash
 # Make changes
 git add .
@@ -233,12 +253,14 @@ git push origin main
 ## Performance Optimization
 
 ### Lighthouse Score Goals
+
 - Performance: 90+
 - Accessibility: 95+
 - Best Practices: 95+
 - SEO: 100
 
 ### Tips:
+
 1. Minimize client-side JavaScript
 2. Use static generation where possible
 3. Optimize fonts (already configured)
@@ -250,6 +272,7 @@ git push origin main
 ## Security
 
 Vercel provides:
+
 - ✅ Automatic HTTPS
 - ✅ DDoS protection
 - ✅ Edge network security
@@ -270,11 +293,13 @@ Vercel provides:
 Your J Supreme Market Institute is now live!
 
 Share your URL:
+
 - Twitter: Tag @vercel
 - LinkedIn: Share your project
 - Communities: Show your work
 
 **Next Steps:**
+
 1. Set up custom domain
 2. Add analytics
 3. Monitor performance
@@ -283,4 +308,4 @@ Share your URL:
 
 ---
 
-*Built with Next.js • Deployed on Vercel • Powered by Innovation*
+_Built with Next.js • Deployed on Vercel • Powered by Innovation_
