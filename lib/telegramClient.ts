@@ -12,8 +12,10 @@ interface TelegramAlert {
   asset: string
   signal: 'BUY' | 'SELL' | 'CLOSE' | 'WAIT'
   entryPrice?: number
+  entryZone?: string
   stopLoss?: number
   takeProfit?: number
+  takeProfitTargets?: Array<{ label: string; value: number }>
   confidence?: number
   category: 'FOREX' | 'CRYPTO' | 'INDICES' | 'COMMODITIES'
   source: 'PROVIDER' | 'WEBSITE' | 'EMAIL'
@@ -25,8 +27,10 @@ interface TradeAlert {
   asset: string
   signal: 'BUY' | 'SELL' | 'CLOSE'
   entryPrice?: number
+  entryZone?: string
   stopLoss?: number
   takeProfit?: number
+  takeProfitTargets?: Array<{ label: string; value: number }>
   timeframe?: string
   confluence?: string[]
   source: string
@@ -35,6 +39,40 @@ interface TradeAlert {
 // Parse telegram message for trading signal
 export function parseAlertMessage(text: string): Partial<TradeAlert> | null {
   try {
+    // Pattern 0: Entry range + TP targets
+    // BUY EURUSD | Entry: 1.17443 - 1.17914 | Stop: 1.16501 | TP Range: TP1 1.18149 | TP2 1.18620
+    const rangePattern =
+      /(BUY|SELL)\s+([A-Z0-9/]+).*?Entry:\s*([\d.]+)\s*-\s*([\d.]+).*?Stop:\s*([\d.]+).*?TP\s*Range:\s*(.+)$/i
+    const rangeMatch = text.match(rangePattern)
+
+    if (rangeMatch) {
+      const signal = rangeMatch[1].toUpperCase() as 'BUY' | 'SELL' | 'CLOSE'
+      const asset = rangeMatch[2].toUpperCase()
+      const entryLow = parseFloat(rangeMatch[3])
+      const entryHigh = parseFloat(rangeMatch[4])
+      const stopLoss = parseFloat(rangeMatch[5])
+      const tpText = rangeMatch[6]
+
+      const tpMatches = Array.from(tpText.matchAll(/TP\s*(\d+)\s*([\d.]+)/gi))
+      const takeProfitTargets = tpMatches.map(match => ({
+        label: `TP${match[1]}`,
+        value: parseFloat(match[2]),
+      }))
+
+      const entryPrice = signal === 'BUY' ? entryLow : entryHigh
+      const takeProfit = takeProfitTargets[0]?.value
+
+      return {
+        signal,
+        asset,
+        entryPrice,
+        entryZone: `${entryLow} - ${entryHigh}`,
+        stopLoss,
+        takeProfit,
+        takeProfitTargets,
+      }
+    }
+
     // Pattern 1: "BUY EURUSD 1.0900 SL: 1.0880 TP: 1.0950"
     const pattern1 =
       /(\w+)\s+([A-Z0-9]+)\s+([\d.]+)\s+(?:SL|SL:)?\s*([\d.]+)?\s+(?:TP|TP:)?\s*([\d.]+)?/i
@@ -114,6 +152,7 @@ export function createAlert(
   source: 'PROVIDER' | 'WEBSITE' | 'EMAIL' = 'PROVIDER'
 ): TelegramAlert {
   const parsed = parseAlertMessage(text)
+  const fallbackTakeProfit = parsed?.takeProfitTargets?.[0]?.value
 
   return {
     id: `${groupId}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -124,8 +163,10 @@ export function createAlert(
     asset: parsed?.asset || 'UNKNOWN',
     signal: parsed?.signal || 'WAIT',
     entryPrice: parsed?.entryPrice,
+    entryZone: parsed?.entryZone,
     stopLoss: parsed?.stopLoss,
-    takeProfit: parsed?.takeProfit,
+    takeProfit: parsed?.takeProfit || fallbackTakeProfit,
+    takeProfitTargets: parsed?.takeProfitTargets,
     category: categorizeAsset(parsed?.asset || ''),
     source,
     parsed: !!parsed,
@@ -149,7 +190,7 @@ export function validateAlert(alert: TelegramAlert): { valid: boolean; reason?: 
 
   // Entry price optional for some sources, but must have SL/TP for execution
   if (['BUY', 'SELL'].includes(alert.signal)) {
-    if (!alert.stopLoss || !alert.takeProfit) {
+    if (!alert.stopLoss || (!alert.takeProfit && !alert.takeProfitTargets?.length)) {
       return { valid: false, reason: 'BUY/SELL requires SL and TP' }
     }
   }
@@ -171,9 +212,13 @@ export function formatAlertForTelegram(alert: TelegramAlert): string {
     `${emoji} **${alert.signal}** ${alert.asset}`,
     `Group: ${alert.groupName}`,
     `Category: ${alert.category}`,
+    alert.entryZone ? `Entry Zone: ${alert.entryZone}` : null,
     alert.entryPrice ? `Entry: $${alert.entryPrice}` : null,
     alert.stopLoss ? `🛑 SL: $${alert.stopLoss}` : null,
     alert.takeProfit ? `🎯 TP: $${alert.takeProfit}` : null,
+    alert.takeProfitTargets?.length
+      ? `TP Range: ${alert.takeProfitTargets.map(tp => `${tp.label} ${tp.value}`).join(' | ')}`
+      : null,
     `Source: ${alert.source}`,
     `Time: ${new Date(alert.timestamp).toLocaleTimeString()}`,
   ].filter(Boolean)

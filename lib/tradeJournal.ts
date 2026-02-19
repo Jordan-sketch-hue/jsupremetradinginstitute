@@ -141,14 +141,17 @@ class TradeJournal {
       'Signal',
       'Type',
       'Entry',
+      'EntryZone',
       'SL',
       'TP',
+      'TPTargets',
       'Qty',
       'Status',
       'ExitPrice',
       'PnL',
       'PnL%',
       'RiskReward',
+      'TargetHit',
     ]
 
     const rows = trades.map(t => [
@@ -158,14 +161,17 @@ class TradeJournal {
       t.signal,
       t.orderType,
       t.entryPrice,
+      t.entryZone || '',
       t.stopLoss,
       t.takeProfit,
+      t.takeProfitTargets?.map(tp => `${tp.label} ${tp.value}`).join(' | ') || '',
       t.quantity,
       t.status,
       t.exitPrice || '',
       t.pnl || '',
       t.pnlPercent || '',
       t.riskReward || '',
+      t.targetHit || '',
     ])
 
     return [headers, ...rows].map(row => row.join(',')).join('\n')

@@ -8,6 +8,14 @@ interface TelegramMessage {
   text: string
   parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2'
   disable_web_page_preview?: boolean
+  reply_markup?: any
+}
+
+interface TelegramSendOptions {
+  editMessageId?: string
+  replyMarkup?: any
+  parseMode?: 'HTML' | 'Markdown' | 'MarkdownV2'
+  chatId?: string | number
 }
 
 // Track sent messages for edit capability
@@ -29,30 +37,35 @@ setInterval(() => {
  */
 export async function sendTelegramUpdate(
   message: string,
-  editMessageId?: string
+  options?: TelegramSendOptions
 ): Promise<boolean> {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN
     const execGroupId = process.env.EXEC_GROUP_ID || process.env.EXEC_GROUP_NAME_OR_ID
+    const targetChatId = options?.chatId || execGroupId
 
-    if (!botToken || !execGroupId) {
+    if (!botToken || !targetChatId) {
       console.warn('[TELEGRAM_NOTIFIER] Bot token or group ID not configured')
       return false
     }
 
     const telegramMessage: TelegramMessage = {
-      chat_id: execGroupId,
+      chat_id: targetChatId,
       text: message,
-      parse_mode: 'Markdown',
+      parse_mode: options?.parseMode || 'Markdown',
       disable_web_page_preview: true,
     }
 
-    const url = editMessageId
+    if (options?.replyMarkup) {
+      telegramMessage.reply_markup = options.replyMarkup
+    }
+
+    const url = options?.editMessageId
       ? `https://api.telegram.org/bot${botToken}/editMessageText`
       : `https://api.telegram.org/bot${botToken}/sendMessage`
 
-    if (editMessageId) {
-      ;(telegramMessage as any).message_id = editMessageId
+    if (options?.editMessageId) {
+      ;(telegramMessage as any).message_id = options.editMessageId
     }
 
     const response = await fetch(url, {
@@ -76,7 +89,7 @@ export async function sendTelegramUpdate(
     }
 
     // Track sent message
-    const messageKey = `${execGroupId}-${data.result.message_id}`
+    const messageKey = `${targetChatId}-${data.result.message_id}`
     sentMessages.set(messageKey, {
       messageId: data.result.message_id,
       timestamp: Date.now(),

@@ -3,6 +3,16 @@ import { createAlert, validateAlert } from '@/lib/telegramClient'
 import { executeTradeFromSignal } from '@/lib/tradeExecutor'
 import { validateAlertScore } from '@/lib/alertValidator'
 import { sendTelegramUpdate } from '@/lib/telegramNotifier'
+import {
+  getMainMenuKeyboard,
+  startTradeMenu,
+  getStopLossKeyboard,
+  getConfirmationKeyboard,
+  processMenuCallback,
+  setCustomPrice,
+  getMenuState,
+} from '@/lib/telegramMenuHandler'
+import { getHourlyBestTrades, formatHourlyUpdateForTelegram } from '@/lib/hourlyBestTrades'
 
 /**
  * /api/telegram/webhook - Receive alerts from Telegram VIP group
@@ -17,6 +27,15 @@ interface TelegramUpdate {
     chat: { id: number; title?: string; type: string }
     text?: string
     from?: { id: number; first_name: string; username?: string }
+  }
+  callback_query?: {
+    id: string
+    data?: string
+    from: { id: number; first_name?: string; username?: string }
+    message?: {
+      message_id: number
+      chat: { id: number; title?: string; type: string }
+    }
   }
   channel_post?: {
     message_id: number
@@ -61,15 +80,93 @@ export async function POST(request: NextRequest) {
     }
     processedUpdates.add(update.update_id)
 
+    // Handle callback queries (menu buttons)
+    if (update.callback_query?.data && update.callback_query.message?.chat?.id) {
+      const chatId = update.callback_query.message.chat.id
+      const userId = update.callback_query.from.id
+      const action = processMenuCallback(userId, update.callback_query.data)
+
+      if (action.action === 'show_main_menu') {
+        await sendTelegramUpdate('🤖 **Bot Menu**\nChoose an option:', {
+          chatId,
+          replyMarkup: getMainMenuKeyboard(),
+        })
+      }
+
+      if (action.action === 'show_stop_loss_menu') {
+        const { message, keyboard } = getStopLossKeyboard(
+          action.data.tradeId,
+          action.data.buyPrice,
+          action.data.originalSL
+        )
+        await sendTelegramUpdate(message, { chatId, replyMarkup: keyboard })
+      }
+
+      if (action.action === 'show_confirmation_menu') {
+        const { message, keyboard } = getConfirmationKeyboard(
+          action.data.tradeId,
+          action.data.symbol,
+          action.data.signal,
+          action.data.entry,
+          action.data.sl,
+          action.data.tp,
+          action.data.buyLimit,
+          action.data.stopLimit
+        )
+        await sendTelegramUpdate(message, { chatId, replyMarkup: keyboard })
+      }
+
+      if (action.action === 'ask_custom_price') {
+        await sendTelegramUpdate(
+          `✍️ Send your custom price for **${action.data.field}**. Example: 1.17450`,
+          { chatId }
+        )
+      }
+
+      if (action.action === 'send_hourly_trades') {
+        const hourly = await getHourlyBestTrades()
+        const message = formatHourlyUpdateForTelegram(hourly)
+        await sendTelegramUpdate(message, { chatId })
+      }
+
+      if (action.action === 'execute_trade') {
+        const executeResult = await executeTradeFromSignal({
+          asset: action.data.symbol,
+          symbol: action.data.symbol,
+          signal: action.data.signal,
+          entryPrice: action.data.entry,
+          stopLoss: action.data.sl,
+          takeProfit: action.data.tp,
+          orderType: 'LIMIT',
+          category: 'FOREX',
+          confidence: action.data.confidence / 100,
+          accountBalance: parseFloat(process.env.ACCOUNT_BALANCE || '10000'),
+          source: 'TELEGRAM_MENU',
+        })
+
+        if (executeResult.success) {
+          await sendTelegramUpdate(`✅ Trade executed!\nTrade ID: ${executeResult.tradeId}`, {
+            chatId,
+          })
+        } else {
+          await sendTelegramUpdate(`❌ Trade failed: ${executeResult.reason}`, { chatId })
+        }
+      }
+
+      return NextResponse.json({ ok: true })
+    }
+
     // Extract message text and chat info
     let messageText: string | undefined
     let chatId: number | undefined
     let chatName: string | undefined
+    let fromUserId: number | undefined
 
     if (update.message) {
       messageText = update.message.text
       chatId = update.message.chat.id
       chatName = update.message.chat.title || `${update.message.from?.first_name}`
+      fromUserId = update.message.from?.id
     } else if (update.channel_post) {
       messageText = update.channel_post.text
       chatId = update.channel_post.chat.id
@@ -81,10 +178,65 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    // Handle menu commands for execution group
+    const execGroupId = parseInt(
+      process.env.EXEC_GROUP_ID || process.env.EXEC_GROUP_NAME_OR_ID || '0'
+    )
+    if (execGroupId && chatId === execGroupId) {
+      if (messageText.startsWith('/menu') || messageText.startsWith('/start')) {
+        await sendTelegramUpdate('🤖 **Bot Menu**\nChoose an option:', {
+          chatId,
+          replyMarkup: getMainMenuKeyboard(),
+        })
+        return NextResponse.json({ ok: true })
+      }
+
+      if (messageText.startsWith('/hourly')) {
+        const hourly = await getHourlyBestTrades()
+        const message = formatHourlyUpdateForTelegram(hourly)
+        await sendTelegramUpdate(message, { chatId })
+        return NextResponse.json({ ok: true })
+      }
+
+      const state = fromUserId ? getMenuState(fromUserId) : undefined
+      if (state?.active && messageText && /^\d+(\.\d+)?$/.test(messageText.trim())) {
+        const value = parseFloat(messageText.trim())
+        const updateResult = setCustomPrice(
+          fromUserId as number,
+          state.step === 'set_buy' ? 'buy_limit' : 'stop_loss',
+          value
+        )
+        if (updateResult.action === 'menu_updated' && state.step === 'set_stop') {
+          const { message, keyboard } = getStopLossKeyboard(
+            state.currentTrade?.tradeId || 'N/A',
+            state.currentTrade?.buyLimit || state.currentTrade?.entry || value,
+            state.currentTrade?.sl || value
+          )
+          await sendTelegramUpdate(message, { chatId, replyMarkup: keyboard })
+        }
+        if (updateResult.action === 'menu_updated' && state.step === 'confirm') {
+          const trade = state.currentTrade
+          if (trade) {
+            const { message, keyboard } = getConfirmationKeyboard(
+              trade.tradeId,
+              trade.symbol,
+              trade.signal,
+              trade.entry,
+              trade.sl,
+              trade.tp,
+              trade.buyLimit,
+              trade.stopLimit
+            )
+            await sendTelegramUpdate(message, { chatId, replyMarkup: keyboard })
+          }
+        }
+        return NextResponse.json({ ok: true })
+      }
+    }
+
     // Check if message is from provider group
     const providerGroupId = parseInt(process.env.PROVIDER_GROUP_ID || '0')
     if (!providerGroupId || chatId !== providerGroupId) {
-      // Still return 200 to Telegram
       return NextResponse.json({ ok: true })
     }
 
@@ -173,8 +325,10 @@ export async function POST(request: NextRequest) {
       symbol: alert.asset,
       signal: alert.signal as 'BUY' | 'SELL',
       entryPrice: alert.entryPrice || 0,
+      entryZone: alert.entryZone,
       stopLoss: alert.stopLoss || 0,
       takeProfit: alert.takeProfit || 0,
+      takeProfitTargets: alert.takeProfitTargets,
       orderType: 'MARKET',
       category: alert.category,
       confidence,

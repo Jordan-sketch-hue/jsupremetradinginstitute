@@ -12,13 +12,25 @@ interface ExecuteRequest {
   asset: string
   symbol: string
   signal: 'BUY' | 'SELL'
-  entryPrice: number
+  entryPrice?: number
+  entryZone?: string
   stopLoss: number
-  takeProfit: number
+  takeProfit?: number
+  takeProfitTargets?: Array<{ label: string; value: number }>
   orderType?: 'MARKET' | 'LIMIT'
   category?: string
   confidence?: number
   accountBalance?: number
+}
+
+function parseEntryZone(entryZone?: string): { low: number; high: number } | null {
+  if (!entryZone) return null
+  const match = entryZone.match(/([\d.]+)\s*-\s*([\d.]+)/)
+  if (!match) return null
+  const low = parseFloat(match[1])
+  const high = parseFloat(match[2])
+  if (!Number.isFinite(low) || !Number.isFinite(high)) return null
+  return { low, high }
 }
 
 export async function POST(request: NextRequest) {
@@ -33,11 +45,16 @@ export async function POST(request: NextRequest) {
 
     const body: ExecuteRequest = await request.json()
 
+    const entryZone = parseEntryZone(body.entryZone)
+    const entryPrice =
+      body.entryPrice || (entryZone ? (body.signal === 'BUY' ? entryZone.low : entryZone.high) : 0)
+    const takeProfit = body.takeProfit || body.takeProfitTargets?.[0]?.value || 0
+
     const paramValidation = validateTradeParams(
       body.asset,
-      body.entryPrice,
+      entryPrice,
       body.stopLoss,
-      body.takeProfit,
+      takeProfit,
       body.signal
     )
     if (!paramValidation.valid) {
@@ -50,24 +67,21 @@ export async function POST(request: NextRequest) {
     }
 
     const accountBalance = body.accountBalance || 10000
-    const { quantity } = calculatePositionSize(
-      accountBalance,
-      undefined,
-      body.entryPrice,
-      body.stopLoss
-    )
+    const { quantity } = calculatePositionSize(accountBalance, undefined, entryPrice, body.stopLoss)
 
     const trade = createTradeOrder(
       body.asset,
       body.symbol,
       body.signal,
-      body.entryPrice,
+      entryPrice,
       body.stopLoss,
-      body.takeProfit,
+      takeProfit,
       quantity,
       body.orderType || 'MARKET',
       body.category || 'FOREX',
-      body.confidence
+      body.confidence,
+      body.entryZone,
+      body.takeProfitTargets
     )
 
     trackOpenTrade(trade)

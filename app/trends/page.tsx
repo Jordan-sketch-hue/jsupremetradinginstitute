@@ -6,6 +6,8 @@ import { ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { TechnicalIndicators } from '@/lib/technicalAnalysis'
 import AssetDetailModal from '@/components/AssetDetailModal'
+import TrendsNavigation from '@/components/TrendsNavigation'
+import TradeConfirmationDialog from '@/components/TradeConfirmationDialog'
 
 interface AssetTrend {
   symbol: string
@@ -54,6 +56,11 @@ interface DebriefAsset {
   focus: string
   confidence: number
   tradability: number
+}
+
+type DisplayedAsset = AssetTrend & {
+  tradability: number
+  confidenceTier: 'HIGH' | 'MEDIUM' | 'LOW'
 }
 
 const DEBRIEF_HORIZONS: Array<{
@@ -124,6 +131,11 @@ export default function TrendsPage() {
   const [signalFilter, setSignalFilter] = useState<'ALL' | 'BUY' | 'SELL' | 'WAIT'>('ALL')
   const [liveFailures, setLiveFailures] = useState<LiveFailureEntry[]>([])
   const [deploymentInfo, setDeploymentInfo] = useState<DeploymentInfo | null>(null)
+  const [activeSection, setActiveSection] = useState<string>('forex')
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+  const [selectedTradeForConfirm, setSelectedTradeForConfirm] = useState<any>(null)
+  const [loadingTrade, setLoadingTrade] = useState(false)
+  const [sectionFilter, setSectionFilter] = useState<'overview' | 'debrief' | 'signals'>('overview')
 
   useEffect(() => {
     const cacheKey = 'trends-assets-cache'
@@ -527,7 +539,7 @@ export default function TrendsPage() {
     .slice(0, 3)
 
   // Show all assets without filters
-  const displayedAssets = assets.map(asset => ({
+  const displayedAssets: DisplayedAsset[] = assets.map(asset => ({
     ...asset,
     tradability: calculateTradability(asset),
     confidenceTier:
@@ -538,331 +550,108 @@ export default function TrendsPage() {
           : 'LOW',
   }))
 
-  const filteredAssets =
+  const filteredAssets: DisplayedAsset[] =
     signalFilter === 'ALL'
       ? displayedAssets
       : displayedAssets.filter(a => a.technicals.signal === signalFilter)
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pt-24">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Market Overview Section */}
-        <div className="mb-6 rounded-xl border border-slate-700 bg-gradient-to-r from-slate-900/80 to-slate-850/60 p-5">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
-                Live Market Overview
-              </h1>
-              <p className="text-sm text-slate-300">
-                Real-time analysis across {assets.length} assets | Updated {lastUpdate}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Link
-                href="/guides/tradingview"
-                className="px-3 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-xs text-slate-300 hover:bg-slate-600 transition-colors"
-              >
-                ?? TV Guide
-              </Link>
-              <Link
-                href="/learning-path"
-                className="px-3 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-xs text-indigo-300 hover:bg-indigo-500/30 transition-colors"
-              >
-                ?? Learning Path
-              </Link>
-            </div>
-          </div>
+  const forexAssets = filteredAssets.filter(asset => asset.type === 'forex')
+  const cryptoAssets = filteredAssets.filter(asset => asset.type === 'crypto')
+  const indicesAssets = filteredAssets.filter(asset => asset.type === 'indices')
+  const commoditiesAssets = filteredAssets.filter(asset => asset.type === 'commodities')
 
-          {/* Market Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
-              <div className="text-emerald-300 text-xs font-semibold mb-1">BUY Signals</div>
-              <div className="text-2xl font-bold text-emerald-400">{buyAssets.length}</div>
-              <div className="text-[11px] text-slate-400">
-                {buyAssets.length > 0
-                  ? `${((buyAssets.length / assets.length) * 100).toFixed(0)}% of market`
-                  : 'None active'}
-              </div>
-            </div>
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
-              <div className="text-red-300 text-xs font-semibold mb-1">SELL Signals</div>
-              <div className="text-2xl font-bold text-red-400">{sellAssets.length}</div>
-              <div className="text-[11px] text-slate-400">
-                {sellAssets.length > 0
-                  ? `${((sellAssets.length / assets.length) * 100).toFixed(0)}% of market`
-                  : 'None active'}
-              </div>
-            </div>
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-              <div className="text-amber-300 text-xs font-semibold mb-1">WAIT (Neutral)</div>
-              <div className="text-2xl font-bold text-amber-400">{waitAssets.length}</div>
-              <div className="text-[11px] text-slate-400">
-                {waitAssets.length > 0
-                  ? `${((waitAssets.length / assets.length) * 100).toFixed(0)}% of market`
-                  : 'None active'}
-              </div>
-            </div>
-            <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3">
-              <div className="text-cyan-300 text-xs font-semibold mb-1">Market Status</div>
-              <div className="text-lg font-bold text-cyan-400">
-                {buyAssets.length > sellAssets.length
-                  ? '?? Bullish'
-                  : sellAssets.length > buyAssets.length
-                    ? '?? Bearish'
-                    : '?? Sideways'}
-              </div>
-              <div className="text-[11px] text-slate-400">Sentiment bias</div>
-            </div>
-          </div>
+  const parseNumber = (value: string): number => parseFloat(value.replace(/[^\d.]/g, '')) || 0
 
-          {/* Signal Filter Controls */}
-          <div className="mb-4">
-            <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
-              Filter by Signal
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {(['ALL', 'BUY', 'SELL', 'WAIT'] as const).map(signal => (
-                <button
-                  key={signal}
-                  onClick={() => setSignalFilter(signal)}
-                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    signalFilter === signal
-                      ? signal === 'BUY'
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
-                        : signal === 'SELL'
-                          ? 'bg-red-500/20 text-red-300 border-red-500/50'
-                          : signal === 'WAIT'
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                            : 'bg-slate-600 text-slate-100 border-slate-500'
-                      : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
-                  }`}
-                >
-                  {signal}
-                </button>
-              ))}
-            </div>
-          </div>
+  const parseEntryRange = (value: string): { low: number; high: number } | null => {
+    const match = value.match(/([\d.]+)\s*-\s*([\d.]+)/)
+    if (!match) return null
+    const low = parseFloat(match[1])
+    const high = parseFloat(match[2])
+    if (!Number.isFinite(low) || !Number.isFinite(high)) return null
+    return { low, high }
+  }
 
-          {/* Top Movers & Confidence */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div>
-              <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
-                ?? Top Movers (24h Volatility)
-              </div>
-              <div className="space-y-2">
-                {topMovers.map((asset, idx) => (
-                  <div
-                    key={asset.symbol}
-                    className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-slate-200">{asset.symbol}</div>
-                        <div className="text-[11px] text-slate-500">{asset.name}</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div
-                        className={`text-sm font-bold ${
-                          asset.changePercent24h >= 0 ? 'text-emerald-400' : 'text-red-400'
-                        }`}
-                      >
-                        {asset.changePercent24h >= 0 ? '+' : ''}
-                        {asset.changePercent24h.toFixed(2)}%
-                      </div>
-                      <div className="text-[11px] text-slate-400">
-                        ${asset.currentPrice.toFixed(4)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
-                ? Highest Confidence
-              </div>
-              <div className="space-y-2">
-                {topConfidence.map((asset, idx) => (
-                  <div
-                    key={asset.symbol}
-                    className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-slate-200">{asset.symbol}</div>
-                        <div className="text-[11px] text-slate-500">{asset.technicals.signal}</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-purple-400">
-                        {asset.technicals.confidence}%
-                      </div>
-                      <div className="text-[11px] text-slate-400">confidence</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+  const openTradeConfirm = (asset: AssetTrend) => {
+    const entryRange = parseEntryRange(asset.entryZone)
+    const entry = entryRange
+      ? asset.technicals.signal === 'BUY'
+        ? entryRange.low
+        : entryRange.high
+      : asset.currentPrice
 
-          <div className="mt-3 pt-3 border-t border-slate-700 text-[11px] text-slate-400 flex gap-2 flex-wrap">
-            <Link href="/doctrine" className="text-indigo-300 hover:text-indigo-200 font-semibold">
-              ?? Trading Doctrine
-            </Link>
-            <span>•</span>
-            <Link
-              href="/guides/deriv"
-              className="text-indigo-300 hover:text-indigo-200 font-semibold"
-            >
-              ?? Deriv Guide
-            </Link>
-            <span>•</span>
-            <Link
-              href="/courses/trading-psychology"
-              className="text-indigo-300 hover:text-indigo-200 font-semibold"
-            >
-              ?? Psychology Course
-            </Link>
-          </div>
+    const sl = parseNumber(asset.stopLoss)
+    const tpValue = asset.takeProfitTargets?.[0]?.value
+    const tp = tpValue ? parseNumber(tpValue) : parseNumber(asset.takeProfit)
+
+    setSelectedTradeForConfirm({
+      symbol: asset.symbol,
+      signal: asset.technicals.signal,
+      entry,
+      sl,
+      tp,
+      confidence: asset.technicals.confidence,
+      entryZone: asset.entryZone,
+      takeProfitTargets: asset.takeProfitTargets,
+    })
+    setConfirmDialogOpen(true)
+  }
+
+  const handleConfirmTrade = async (trade: any) => {
+    setLoadingTrade(true)
+    try {
+      const response = await fetch('/api/trade/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: trade.symbol,
+          signal: trade.signal,
+          entry: trade.entry,
+          sl: trade.sl,
+          tp: trade.tp,
+          buyLimit: trade.buyLimit,
+          stopLimit: trade.stopLimit,
+          source: 'page',
+          confidence: trade.confidence,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        alert(`✅ Trade confirmed!\nID: ${result.trade.tradeId}`)
+        setConfirmDialogOpen(false)
+        setSelectedTradeForConfirm(null)
+      } else {
+        alert(`❌ Error: ${result.error}`)
+      }
+    } catch (error) {
+      alert(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setLoadingTrade(false)
+    }
+  }
+
+  const renderAssetSection = (
+    sectionId: string,
+    title: string,
+    sectionAssets: DisplayedAsset[]
+  ) => (
+    <section id={sectionId} className="mb-8">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-bold text-white">{title}</h3>
+        <span className="text-xs text-slate-400">{sectionAssets.length} assets</span>
+      </div>
+
+      {sectionAssets.length === 0 ? (
+        <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-400">
+          No assets available in this section right now.
         </div>
-
-        <div className="mb-4 p-3 rounded-xl border border-slate-700 bg-slate-900/70 text-slate-200 text-xs flex flex-wrap gap-3 items-center">
-          <span className="font-semibold text-emerald-300">Live Build</span>
-          <span>
-            Commit: <span className="text-white">{deploymentInfo?.commitShort || 'local'}</span>
-          </span>
-          <span>
-            Env: <span className="text-white">{deploymentInfo?.environment || 'unknown'}</span>
-          </span>
-          <span>
-            Updated: <span className="text-white">{lastUpdate || 'n/a'}</span>
-          </span>
-        </div>
-
-        {liveFailures.length > 0 && (
-          <div className="mb-4 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-200">
-            <h3 className="font-bold mb-2">Live Data Failure Report</h3>
-            <p className="text-xs mb-2">
-              Demo mode is disabled. Symbols below were skipped because live providers failed.
-            </p>
-            <div className="max-h-48 overflow-auto space-y-2 text-xs">
-              {liveFailures.slice(0, 20).map((entry, index) => (
-                <div
-                  key={`${entry.symbol}-${entry.timestamp}-${index}`}
-                  className="border-b border-red-500/20 pb-2"
-                >
-                  <div className="font-semibold">
-                    {entry.symbol} ({entry.assetType})
-                  </div>
-                  <div>{entry.reasons.join(' | ')}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="mb-6 rounded-xl border border-slate-700 bg-slate-900/70 p-4 md:p-5">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-            <div>
-              <h2 className="text-lg md:text-xl font-bold text-white">Daily Debrief</h2>
-              <p className="text-sm text-slate-300">
-                Predictive multi-timeframe shortlist using higher-timeframe accumulation,
-                distribution, manipulation behavior, order block structure, and signal confidence.
-              </p>
-            </div>
-            <div className="text-xs text-slate-300">
-              Refreshed with live feed • {new Date().toLocaleDateString()}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-3">
-            {DEBRIEF_HORIZONS.map(horizon => (
-              <button
-                key={horizon.key}
-                onClick={() => setDebriefHorizon(horizon.key)}
-                className={`px-3 py-1.5 text-xs rounded border ${
-                  debriefHorizon === horizon.key
-                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
-                    : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
-                }`}
-              >
-                {horizon.label}
-              </button>
-            ))}
-          </div>
-
-          <p className="text-xs text-slate-400 mb-4">
-            {DEBRIEF_HORIZONS.find(item => item.key === debriefHorizon)?.summary}
-          </p>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {activeDebrief.map((item, index) => (
-              <div
-                key={`${debriefHorizon}-${item.symbol}`}
-                className="rounded-lg border border-slate-700 bg-slate-800/70 p-3"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <div className="text-sm font-bold text-white">
-                      #{index + 1} {item.name}
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      {item.symbol} • {item.type.toUpperCase()}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-emerald-300">{item.score}%</div>
-                    <div className="text-[11px] text-slate-400">debrief score</div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mb-2">
-                  <span
-                    className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                      item.signal === 'BUY'
-                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                        : item.signal === 'SELL'
-                          ? 'bg-red-500/15 text-red-300 border border-red-500/30'
-                          : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                    }`}
-                  >
-                    {item.signal}
-                  </span>
-                  <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-violet-500/15 text-violet-300 border border-violet-500/30">
-                    {item.phase}
-                  </span>
-                </div>
-
-                <div className="text-xs text-slate-300 mb-1">{item.outlook}</div>
-                <div className="text-xs text-slate-400">{item.focus}</div>
-                <div className="mt-2 text-[11px] text-slate-500">
-                  Confidence {item.confidence}% • Tradability {item.tradability}%
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-3 text-xs text-slate-400 flex items-center justify-between gap-2">
-            <span>
-              Uses live market data only. No demo values are included in debrief rankings.
-            </span>
-            <Link
-              href="/trends/debrief"
-              className="text-indigo-300 hover:text-indigo-200 font-semibold"
-            >
-              Full debrief page
-            </Link>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8 mt-4">
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <AnimatePresence>
-            {filteredAssets.map((asset, idx) => (
+            {sectionAssets.map((asset, idx) => (
               <motion.div
-                key={asset.symbol}
+                key={`${sectionId}-${asset.symbol}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -876,9 +665,7 @@ export default function TrendsPage() {
                       : 'border-yellow-500/40 hover:border-yellow-400 hover:shadow-yellow-500/20'
                 }`}
               >
-                {/* Top badges */}
                 <div className="flex gap-2 mb-2 flex-wrap">
-                  {/* Data Source Badge */}
                   <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-green-500 to-green-700 text-white">
                     LIVE
                   </div>
@@ -955,7 +742,6 @@ export default function TrendsPage() {
                   </div>
                 </div>
 
-                {/* Tradability Score */}
                 <div className="mb-3 p-2 bg-slate-700/50 rounded border border-slate-600">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-semibold text-slate-300">Tradability Score</span>
@@ -979,7 +765,6 @@ export default function TrendsPage() {
                   </div>
                 </div>
 
-                {/* Trading Action Recommendation */}
                 <div
                   className={`mb-4 p-2 rounded border text-xs ${
                     asset.technicals.signal === 'BUY'
@@ -1009,35 +794,437 @@ export default function TrendsPage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setSelectedAsset(asset)}
-                  className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded font-medium transition-colors text-sm"
-                >
-                  View Order Blocks <ChevronDown className="inline w-3 h-3 ml-1" />
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={event => {
+                      event.stopPropagation()
+                      setSelectedAsset(asset)
+                    }}
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded font-medium transition-colors text-sm"
+                  >
+                    View Order Blocks <ChevronDown className="inline w-3 h-3 ml-1" />
+                  </button>
+                  <button
+                    onClick={event => {
+                      event.stopPropagation()
+                      openTradeConfirm(asset)
+                    }}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-medium transition-colors text-sm"
+                  >
+                    Confirm Trade
+                  </button>
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
+      )}
+    </section>
+  )
 
-        <AnimatePresence>
-          {selectedAsset && (
-            <AssetDetailModal
-              asset={{
-                symbol: selectedAsset.symbol,
-                name: selectedAsset.name,
-                price: selectedAsset.currentPrice,
-                signal: selectedAsset.technicals.signal,
-                confidence: selectedAsset.technicals.confidence,
-                type: selectedAsset.type,
-                entryZone: selectedAsset.entryZone,
-                stopLoss: selectedAsset.stopLoss,
-                takeProfitTargets: selectedAsset.takeProfitTargets,
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      <TrendsNavigation onNavigate={setActiveSection} activeSection={activeSection} />
+
+      <div className="pt-8">
+        <div className="max-w-7xl mx-auto px-4">
+          {/* Market Overview Section */}
+          <div
+            id="overview"
+            className="mb-6 rounded-xl border border-slate-700 bg-gradient-to-r from-slate-900/80 to-slate-850/60 p-5"
+          >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
+                  Live Market Overview
+                </h1>
+                <p className="text-sm text-slate-300">
+                  Real-time analysis across {assets.length} assets | Updated {lastUpdate}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Link
+                  href="/guides/tradingview"
+                  className="px-3 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-xs text-slate-300 hover:bg-slate-600 transition-colors"
+                >
+                  TV Guide
+                </Link>
+                <Link
+                  href="/learning-path"
+                  className="px-3 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-xs text-indigo-300 hover:bg-indigo-500/30 transition-colors"
+                >
+                  Learning Path
+                </Link>
+              </div>
+            </div>
+
+            {/* Market Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+                <div className="text-emerald-300 text-xs font-semibold mb-1">BUY Signals</div>
+                <div className="text-2xl font-bold text-emerald-400">{buyAssets.length}</div>
+                <div className="text-[11px] text-slate-400">
+                  {buyAssets.length > 0
+                    ? `${((buyAssets.length / assets.length) * 100).toFixed(0)}% of market`
+                    : 'None active'}
+                </div>
+              </div>
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+                <div className="text-red-300 text-xs font-semibold mb-1">SELL Signals</div>
+                <div className="text-2xl font-bold text-red-400">{sellAssets.length}</div>
+                <div className="text-[11px] text-slate-400">
+                  {sellAssets.length > 0
+                    ? `${((sellAssets.length / assets.length) * 100).toFixed(0)}% of market`
+                    : 'None active'}
+                </div>
+              </div>
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                <div className="text-amber-300 text-xs font-semibold mb-1">WAIT (Neutral)</div>
+                <div className="text-2xl font-bold text-amber-400">{waitAssets.length}</div>
+                <div className="text-[11px] text-slate-400">
+                  {waitAssets.length > 0
+                    ? `${((waitAssets.length / assets.length) * 100).toFixed(0)}% of market`
+                    : 'None active'}
+                </div>
+              </div>
+              <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3">
+                <div className="text-cyan-300 text-xs font-semibold mb-1">Market Status</div>
+                <div className="text-lg font-bold text-cyan-400">
+                  {buyAssets.length > sellAssets.length
+                    ? 'Bullish'
+                    : sellAssets.length > buyAssets.length
+                      ? 'Bearish'
+                      : 'Sideways'}
+                </div>
+                <div className="text-[11px] text-slate-400">Sentiment bias</div>
+              </div>
+            </div>
+
+            {/* Signal Filter Controls */}
+            <div className="mb-4">
+              <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
+                Filter by Signal
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {(['ALL', 'BUY', 'SELL', 'WAIT'] as const).map(signal => (
+                  <button
+                    key={signal}
+                    onClick={() => setSignalFilter(signal)}
+                    className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                      signalFilter === signal
+                        ? signal === 'BUY'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                          : signal === 'SELL'
+                            ? 'bg-red-500/20 text-red-300 border-red-500/50'
+                            : signal === 'WAIT'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                              : 'bg-slate-600 text-slate-100 border-slate-500'
+                        : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
+                    }`}
+                  >
+                    {signal}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Top Movers & Confidence */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
+                  Top Movers (24h Volatility)
+                </div>
+                <div className="space-y-2">
+                  {topMovers.map((asset, idx) => (
+                    <div
+                      key={asset.symbol}
+                      className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-200">{asset.symbol}</div>
+                          <div className="text-[11px] text-slate-500">{asset.name}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div
+                          className={`text-sm font-bold ${
+                            asset.changePercent24h >= 0 ? 'text-emerald-400' : 'text-red-400'
+                          }`}
+                        >
+                          {asset.changePercent24h >= 0 ? '+' : ''}
+                          {asset.changePercent24h.toFixed(2)}%
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          ${asset.currentPrice.toFixed(4)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
+                  Highest Confidence
+                </div>
+                <div className="space-y-2">
+                  {topConfidence.map((asset, idx) => (
+                    <div
+                      key={asset.symbol}
+                      className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-200">{asset.symbol}</div>
+                          <div className="text-[11px] text-slate-500">
+                            {asset.technicals.signal}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-purple-400">
+                          {asset.technicals.confidence}%
+                        </div>
+                        <div className="text-[11px] text-slate-400">confidence</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-slate-700 text-[11px] text-slate-400 flex gap-2 flex-wrap">
+              <Link
+                href="/doctrine"
+                className="text-indigo-300 hover:text-indigo-200 font-semibold"
+              >
+                Trading Doctrine
+              </Link>
+              <span>•</span>
+              <Link
+                href="/guides/deriv"
+                className="text-indigo-300 hover:text-indigo-200 font-semibold"
+              >
+                Deriv Guide
+              </Link>
+              <span>•</span>
+              <Link
+                href="/courses/trading-psychology"
+                className="text-indigo-300 hover:text-indigo-200 font-semibold"
+              >
+                Psychology Course
+              </Link>
+            </div>
+          </div>
+
+          <div className="mb-6 rounded-xl border border-slate-700 bg-slate-900/70 p-3">
+            <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
+              View Section
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  { key: 'overview', label: 'Live Market Overview' },
+                  { key: 'debrief', label: 'Daily Debrief' },
+                  { key: 'signals', label: 'Live Signals' },
+                ] as const
+              ).map(option => (
+                <button
+                  key={option.key}
+                  onClick={() => setSectionFilter(option.key)}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    sectionFilter === option.key
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                      : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-4 p-3 rounded-xl border border-slate-700 bg-slate-900/70 text-slate-200 text-xs flex flex-wrap gap-3 items-center">
+            <span className="font-semibold text-emerald-300">Live Build</span>
+            <span>
+              Commit: <span className="text-white">{deploymentInfo?.commitShort || 'local'}</span>
+            </span>
+            <span>
+              Env: <span className="text-white">{deploymentInfo?.environment || 'unknown'}</span>
+            </span>
+            <span>
+              Updated: <span className="text-white">{lastUpdate || 'n/a'}</span>
+            </span>
+          </div>
+
+          {sectionFilter !== 'signals' && liveFailures.length > 0 && (
+            <div
+              id="failures"
+              className="mb-4 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-200"
+            >
+              <h3 className="font-bold mb-2">Live Data Failure Report</h3>
+              <p className="text-xs mb-2">
+                Demo mode is disabled. Symbols below were skipped because live providers failed.
+              </p>
+              <div className="max-h-48 overflow-auto space-y-2 text-xs">
+                {liveFailures.slice(0, 20).map((entry, index) => (
+                  <div
+                    key={`${entry.symbol}-${entry.timestamp}-${index}`}
+                    className="border-b border-red-500/20 pb-2"
+                  >
+                    <div className="font-semibold">
+                      {entry.symbol} ({entry.assetType})
+                    </div>
+                    <div>{entry.reasons.join(' | ')}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {sectionFilter !== 'signals' && (
+            <div
+              id="debrief"
+              className="mb-6 rounded-xl border border-slate-700 bg-slate-900/70 p-4 md:p-5"
+            >
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+                <div>
+                  <h2 className="text-lg md:text-xl font-bold text-white">Daily Debrief</h2>
+                  <p className="text-sm text-slate-300">
+                    Predictive multi-timeframe shortlist using higher-timeframe accumulation,
+                    distribution, manipulation behavior, order block structure, and signal
+                    confidence.
+                  </p>
+                </div>
+                <div className="text-xs text-slate-300">
+                  Refreshed with live feed • {new Date().toLocaleDateString()}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-3">
+                {DEBRIEF_HORIZONS.map(horizon => (
+                  <button
+                    key={horizon.key}
+                    onClick={() => setDebriefHorizon(horizon.key)}
+                    className={`px-3 py-1.5 text-xs rounded border ${
+                      debriefHorizon === horizon.key
+                        ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
+                        : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
+                    }`}
+                  >
+                    {horizon.label}
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-xs text-slate-400 mb-4">
+                {DEBRIEF_HORIZONS.find(item => item.key === debriefHorizon)?.summary}
+              </p>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {activeDebrief.map((item, index) => (
+                  <div
+                    key={`${debriefHorizon}-${item.symbol}`}
+                    className="rounded-lg border border-slate-700 bg-slate-800/70 p-3"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <div className="text-sm font-bold text-white">
+                          #{index + 1} {item.name}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {item.symbol} • {item.type.toUpperCase()}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-emerald-300">{item.score}%</div>
+                        <div className="text-[11px] text-slate-400">debrief score</div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          item.signal === 'BUY'
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            : item.signal === 'SELL'
+                              ? 'bg-red-500/15 text-red-300 border border-red-500/30'
+                              : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        {item.signal}
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-violet-500/15 text-violet-300 border border-violet-500/30">
+                        {item.phase}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-slate-300 mb-1">{item.outlook}</div>
+                    <div className="text-xs text-slate-400">{item.focus}</div>
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      Confidence {item.confidence}% • Tradability {item.tradability}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-3 text-xs text-slate-400 flex items-center justify-between gap-2">
+                <span>
+                  Uses live market data only. No demo values are included in debrief rankings.
+                </span>
+                <Link
+                  href="/trends/debrief"
+                  className="text-indigo-300 hover:text-indigo-200 font-semibold"
+                >
+                  Full debrief page
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {sectionFilter !== 'debrief' && (
+            <div id="signals" className="mt-6">
+              {renderAssetSection('forex', 'Forex Pairs', forexAssets)}
+              {renderAssetSection('crypto', 'Crypto', cryptoAssets)}
+              {renderAssetSection('indices', 'Indices', indicesAssets)}
+              {renderAssetSection('commodities', 'Commodities', commoditiesAssets)}
+            </div>
+          )}
+
+          <AnimatePresence>
+            {selectedAsset && (
+              <AssetDetailModal
+                asset={{
+                  symbol: selectedAsset.symbol,
+                  name: selectedAsset.name,
+                  price: selectedAsset.currentPrice,
+                  signal: selectedAsset.technicals.signal,
+                  confidence: selectedAsset.technicals.confidence,
+                  type: selectedAsset.type,
+                  entryZone: selectedAsset.entryZone,
+                  stopLoss: selectedAsset.stopLoss,
+                  takeProfitTargets: selectedAsset.takeProfitTargets,
+                }}
+                onClose={() => setSelectedAsset(null)}
+              />
+            )}
+          </AnimatePresence>
+
+          {selectedTradeForConfirm && (
+            <TradeConfirmationDialog
+              isOpen={confirmDialogOpen}
+              trade={selectedTradeForConfirm}
+              onConfirm={handleConfirmTrade}
+              onCancel={() => {
+                setConfirmDialogOpen(false)
+                setSelectedTradeForConfirm(null)
               }}
-              onClose={() => setSelectedAsset(null)}
+              loading={loadingTrade}
             />
           )}
-        </AnimatePresence>
+        </div>
       </div>
     </div>
   )

@@ -14,14 +14,36 @@ interface WebsiteSignal {
   asset: string
   symbol: string
   signal: 'BUY' | 'SELL' | 'CLOSE'
-  entryPrice: number
+  entryPrice?: number
+  entryZone?: string
   stopLoss: number
-  takeProfit: number
+  takeProfit?: number
+  takeProfitTargets?: Array<{ label: string; value: number }>
+  takeProfitRange?: string
   source?: string
   apiKey?: string
   confidence?: number
   timeframe?: string
   reason?: string
+}
+
+function parseEntryZone(entryZone?: string): { low: number; high: number } | null {
+  if (!entryZone) return null
+  const match = entryZone.match(/([\d.]+)\s*-\s*([\d.]+)/)
+  if (!match) return null
+  const low = parseFloat(match[1])
+  const high = parseFloat(match[2])
+  if (!Number.isFinite(low) || !Number.isFinite(high)) return null
+  return { low, high }
+}
+
+function parseTakeProfitTargets(range?: string): Array<{ label: string; value: number }> {
+  if (!range) return []
+  const matches = Array.from(range.matchAll(/TP\s*(\d+)\s*([\d.]+)/gi))
+  return matches.map(match => ({
+    label: `TP${match[1]}`,
+    value: parseFloat(match[2]),
+  }))
 }
 
 export async function POST(request: NextRequest) {
@@ -58,8 +80,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const entryZone = parseEntryZone(body.entryZone)
+    const entryPrice =
+      body.entryPrice || (entryZone ? (body.signal === 'BUY' ? entryZone.low : entryZone.high) : 0)
+    const targetList = body.takeProfitTargets?.length
+      ? body.takeProfitTargets
+      : parseTakeProfitTargets(body.takeProfitRange)
+    const takeProfit = body.takeProfit || targetList[0]?.value || 0
+
     // Convert website signal to telegram alert format
-    const alertText = `${body.signal} ${body.asset} ${body.entryPrice} SL: ${body.stopLoss} TP: ${body.takeProfit}`
+    const alertText = `${body.signal} ${body.asset} ${entryPrice} SL: ${body.stopLoss} TP: ${takeProfit}`
     const alert = createAlert(alertText, 0, 'WEBSITE_SIGNAL', 'WEBSITE')
 
     // Validate alert
@@ -88,9 +118,9 @@ export async function POST(request: NextRequest) {
         alert: {
           asset: alert.asset,
           signal: alert.signal,
-          entry: body.entryPrice,
+          entry: entryPrice,
           sl: body.stopLoss,
-          tp: body.takeProfit,
+          tp: takeProfit,
           confidence: (confidence * 100).toFixed(1),
           category: alert.category,
           source: body.source || 'website',
@@ -118,9 +148,11 @@ export async function POST(request: NextRequest) {
       asset: body.asset,
       symbol: body.symbol,
       signal: body.signal as 'BUY' | 'SELL',
-      entryPrice: body.entryPrice,
+      entryPrice,
+      entryZone: body.entryZone,
       stopLoss: body.stopLoss,
-      takeProfit: body.takeProfit,
+      takeProfit,
+      takeProfitTargets: targetList,
       orderType: 'MARKET',
       category: alert.category,
       confidence,
@@ -166,9 +198,10 @@ export async function POST(request: NextRequest) {
         id: trade.tradeId,
         asset: body.asset,
         signal: body.signal,
-        entry: body.entryPrice,
+        entry: entryPrice,
         sl: body.stopLoss,
-        tp: body.takeProfit,
+        tp: takeProfit,
+        tpTargets: targetList,
         confidence: (confidence * 100).toFixed(1),
         status: 'PENDING',
         source: 'WEBSITE',

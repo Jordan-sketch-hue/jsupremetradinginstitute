@@ -26,6 +26,9 @@ export interface BotTrade {
   confidence?: number
   category: string
   riskReward?: number
+  entryZone?: string
+  takeProfitTargets?: Array<{ label: string; value: number }>
+  targetHit?: string
 }
 
 export interface ExecutionResult {
@@ -144,7 +147,9 @@ export function createTradeOrder(
   quantity: number,
   orderType: 'LIMIT' | 'MARKET' = 'MARKET',
   category: string = 'FOREX',
-  confidence?: number
+  confidence?: number,
+  entryZone?: string,
+  takeProfitTargets?: Array<{ label: string; value: number }>
 ): BotTrade {
   const riskReward = calculateRiskReward(entryPrice, stopLoss, takeProfit)
 
@@ -156,8 +161,10 @@ export function createTradeOrder(
     signal,
     orderType,
     entryPrice,
+    entryZone,
     stopLoss,
     takeProfit,
+    takeProfitTargets,
     quantity,
     status: orderType === 'LIMIT' ? 'PENDING' : 'OPEN',
     reason: `Bot execution: ${orderType} order @ ${entryPrice}`,
@@ -314,6 +321,15 @@ export function formatTradeForDisplay(trade: BotTrade): string {
     `Qty: ${trade.quantity} | R/R: ${trade.riskReward?.toFixed(2) || 'N/A'}:1`,
   ]
 
+  if (trade.entryZone) {
+    lines.push(`Entry Zone: ${trade.entryZone}`)
+  }
+
+  if (trade.takeProfitTargets?.length) {
+    const targets = trade.takeProfitTargets.map(tp => `${tp.label} ${tp.value}`).join(' | ')
+    lines.push(`TP Targets: ${targets}`)
+  }
+
   if (trade.pnl !== undefined) {
     const pnlEmoji = trade.pnl >= 0 ? '💰' : '📉'
     lines.push(
@@ -322,6 +338,15 @@ export function formatTradeForDisplay(trade: BotTrade): string {
   }
 
   return lines.join('\n')
+}
+
+export function parseEntryZone(entryZone: string): { low: number; high: number } | null {
+  const match = entryZone.match(/([\d.]+)\s*-\s*([\d.]+)/)
+  if (!match) return null
+  const low = parseFloat(match[1])
+  const high = parseFloat(match[2])
+  if (!Number.isFinite(low) || !Number.isFinite(high)) return null
+  return { low, high }
 }
 
 /**
@@ -333,9 +358,11 @@ export async function executeTradeFromSignal(params: {
   asset: string
   symbol: string
   signal: 'BUY' | 'SELL'
-  entryPrice: number
+  entryPrice?: number
+  entryZone?: string
   stopLoss: number
-  takeProfit: number
+  takeProfit?: number
+  takeProfitTargets?: Array<{ label: string; value: number }>
   orderType?: 'MARKET' | 'LIMIT'
   category?: string
   confidence?: number
@@ -347,12 +374,17 @@ export async function executeTradeFromSignal(params: {
   reason?: string
 }> {
   try {
+    const zone = params.entryZone ? parseEntryZone(params.entryZone) : null
+    const entryPrice =
+      params.entryPrice || (zone ? (params.signal === 'BUY' ? zone.low : zone.high) : 0)
+    const takeProfit = params.takeProfit || params.takeProfitTargets?.[0]?.value || 0
+
     // Validate parameters
     const validation = validateTradeParams(
       params.asset,
-      params.entryPrice,
+      entryPrice,
       params.stopLoss,
-      params.takeProfit,
+      takeProfit,
       params.signal
     )
 
@@ -367,29 +399,30 @@ export async function executeTradeFromSignal(params: {
     }
 
     // Calculate position size
-    const riskPoints = Math.abs(params.entryPrice - params.stopLoss)
     const positionSizeResult = calculatePositionSize(
       params.accountBalance || 10000,
       RISK_CONFIG.perTradePct,
-      params.entryPrice,
+      entryPrice,
       params.stopLoss
     )
 
     const positionSize = positionSizeResult.quantity
-
-    const riskReward = calculateRiskReward(params.entryPrice, params.stopLoss, params.takeProfit)
+    const riskReward = calculateRiskReward(entryPrice, params.stopLoss, takeProfit)
 
     // Create trade order
     const trade = createTradeOrder(
       params.asset,
       params.symbol,
       params.signal,
-      params.entryPrice,
+      entryPrice,
       params.stopLoss,
-      params.takeProfit,
+      takeProfit,
       positionSize,
       params.orderType || 'MARKET',
-      params.category || 'FOREX'
+      params.category || 'FOREX',
+      params.confidence,
+      params.entryZone,
+      params.takeProfitTargets
     )
 
     trade.confidence = params.confidence || 0.65
@@ -407,9 +440,9 @@ export async function executeTradeFromSignal(params: {
           symbol: params.symbol,
           orderType: params.signal === 'BUY' ? 'BUY' : 'SELL',
           volume: positionSize,
-          price: params.entryPrice,
+          price: entryPrice,
           stopLoss: params.stopLoss,
-          takeProfit: params.takeProfit,
+          takeProfit: takeProfit,
           comment: `Bot${params.source ? ` (${params.source})` : ''}`,
         })
 
@@ -429,7 +462,7 @@ export async function executeTradeFromSignal(params: {
 
     // If MT5 not enabled or failed, use simulation
     if (!mt5Success) {
-      const simulationResult = simulateTradeExecution(trade, params.entryPrice)
+      const simulationResult = simulateTradeExecution(trade, entryPrice)
       if (simulationResult.executed) {
         trade.status = 'OPEN'
         trade.openTime = Date.now()
