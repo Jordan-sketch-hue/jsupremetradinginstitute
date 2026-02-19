@@ -183,12 +183,6 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
                 </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-slate-400" />
-            </button>
           </div>
 
           <div className="px-4 md:px-6 pb-4 flex items-center gap-2 flex-wrap">
@@ -427,15 +421,6 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
                     </div>
                   </div>
                 )}
-              </div>
-
-              <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur py-3 mt-2 border-t border-slate-700">
-                <button
-                  onClick={onClose}
-                  className="w-full py-3 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 font-semibold hover:bg-red-500/30"
-                >
-                  Close Order Block View
-                </button>
               </div>
             </>
           )}

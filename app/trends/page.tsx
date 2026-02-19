@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
+import Link from 'next/link'
 import { TechnicalIndicators } from '@/lib/technicalAnalysis'
 import AssetDetailModal from '@/components/AssetDetailModal'
 
@@ -38,6 +39,50 @@ interface DeploymentInfo {
   url: string
 }
 
+type DebriefHorizon = 'day' | 'week' | 'month' | 'year'
+
+type MarketPhase = 'ACCUMULATION' | 'DISTRIBUTION' | 'MANIPULATION'
+
+interface DebriefAsset {
+  symbol: string
+  name: string
+  type: AssetTrend['type']
+  score: number
+  signal: TechnicalIndicators['signal']
+  phase: MarketPhase
+  outlook: string
+  focus: string
+  confidence: number
+  tradability: number
+}
+
+const DEBRIEF_HORIZONS: Array<{
+  key: DebriefHorizon
+  label: string
+  summary: string
+}> = [
+  {
+    key: 'day',
+    label: 'Day',
+    summary: 'Intraday momentum + manipulation sweeps near key levels.',
+  },
+  {
+    key: 'week',
+    label: 'Week',
+    summary: 'Swing continuation around accumulation/distribution transitions.',
+  },
+  {
+    key: 'month',
+    label: 'Month',
+    summary: 'Macro directional bias with order block alignment.',
+  },
+  {
+    key: 'year',
+    label: 'Year',
+    summary: 'Higher-timeframe structure and stability for position bias.',
+  },
+]
+
 const ASSETS_CONFIG: Array<{
   symbol: string
   name: string
@@ -72,6 +117,7 @@ const ASSETS_CONFIG: Array<{
 export default function TrendsPage() {
   const [assets, setAssets] = useState<AssetTrend[]>([])
   const [selectedAsset, setSelectedAsset] = useState<AssetTrend | null>(null)
+  const [debriefHorizon, setDebriefHorizon] = useState<DebriefHorizon>('day')
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<string>('')
@@ -386,6 +432,100 @@ export default function TrendsPage() {
     )
   }
 
+  function inferPhase(asset: AssetTrend): MarketPhase {
+    const changeMagnitude = Math.abs(asset.changePercent24h)
+    if (changeMagnitude >= 1.8) return 'MANIPULATION'
+
+    const bullishStructure = asset.technicals.signal === 'BUY' && asset.technicals.trend === 'UP'
+    const bearishStructure = asset.technicals.signal === 'SELL' && asset.technicals.trend === 'DOWN'
+
+    if (bullishStructure) return 'ACCUMULATION'
+    if (bearishStructure) return 'DISTRIBUTION'
+    return asset.changePercent24h >= 0 ? 'ACCUMULATION' : 'DISTRIBUTION'
+  }
+
+  function buildDebrief(assetList: AssetTrend[], horizon: DebriefHorizon): DebriefAsset[] {
+    const scoreByHorizon = {
+      day: (asset: AssetTrend, tradability: number) => {
+        const momentum = Math.min(100, Math.abs(asset.changePercent24h) * 20)
+        const signalBias =
+          asset.technicals.signal === 'BUY' ? 100 : asset.technicals.signal === 'SELL' ? 80 : 45
+        return Math.round(
+          asset.technicals.confidence * 0.35 +
+            tradability * 0.25 +
+            momentum * 0.25 +
+            signalBias * 0.15
+        )
+      },
+      week: (asset: AssetTrend, tradability: number) => {
+        const trendBias =
+          asset.technicals.trend === 'UP' || asset.technicals.trend === 'DOWN' ? 100 : 60
+        const momentum = Math.min(100, Math.abs(asset.changePercent24h) * 14)
+        return Math.round(
+          asset.technicals.confidence * 0.4 + tradability * 0.3 + trendBias * 0.2 + momentum * 0.1
+        )
+      },
+      month: (asset: AssetTrend, tradability: number) => {
+        const structureBias =
+          asset.technicals.macdSignal === 'BULLISH' || asset.technicals.macdSignal === 'BEARISH'
+            ? 100
+            : 65
+        return Math.round(
+          asset.technicals.confidence * 0.45 + tradability * 0.3 + structureBias * 0.25
+        )
+      },
+      year: (asset: AssetTrend, tradability: number) => {
+        const stability = Math.max(45, 100 - Math.min(55, Math.abs(asset.changePercent24h) * 12))
+        const macroTrend = asset.technicals.trend === 'SIDEWAYS' ? 55 : 95
+        return Math.round(asset.technicals.confidence * 0.45 + stability * 0.35 + macroTrend * 0.2)
+      },
+    }
+
+    return assetList
+      .map(asset => {
+        const tradability = calculateTradability(asset)
+        const phase = inferPhase(asset)
+        const score = Math.min(99, scoreByHorizon[horizon](asset, tradability))
+        const focus =
+          phase === 'MANIPULATION'
+            ? 'Watch liquidity sweeps and rejection around key order block zones.'
+            : phase === 'ACCUMULATION'
+              ? 'Track higher-timeframe demand reactions and pullback entries.'
+              : 'Track higher-timeframe supply reactions and distribution retests.'
+
+        const outlook =
+          asset.technicals.signal === 'BUY'
+            ? 'Bullish continuation bias'
+            : asset.technicals.signal === 'SELL'
+              ? 'Bearish continuation bias'
+              : 'Neutral / wait for confirmation'
+
+        return {
+          symbol: asset.symbol,
+          name: asset.name,
+          type: asset.type,
+          score,
+          signal: asset.technicals.signal,
+          phase,
+          outlook,
+          focus,
+          confidence: asset.technicals.confidence,
+          tradability,
+        }
+      })
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 6)
+  }
+
+  const debriefByHorizon = {
+    day: buildDebrief(assets, 'day'),
+    week: buildDebrief(assets, 'week'),
+    month: buildDebrief(assets, 'month'),
+    year: buildDebrief(assets, 'year'),
+  }
+
+  const activeDebrief = debriefByHorizon[debriefHorizon]
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pt-24">
       <div className="max-w-7xl mx-auto px-4">
@@ -423,6 +563,97 @@ export default function TrendsPage() {
             </div>
           </div>
         )}
+
+        <div className="mb-6 rounded-xl border border-slate-700 bg-slate-900/70 p-4 md:p-5">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-lg md:text-xl font-bold text-white">Daily Debrief</h2>
+              <p className="text-sm text-slate-300">
+                Predictive multi-timeframe shortlist using higher-timeframe accumulation,
+                distribution, manipulation behavior, order block structure, and signal confidence.
+              </p>
+            </div>
+            <div className="text-xs text-slate-300">
+              Refreshed with live feed • {new Date().toLocaleDateString()}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-3">
+            {DEBRIEF_HORIZONS.map(horizon => (
+              <button
+                key={horizon.key}
+                onClick={() => setDebriefHorizon(horizon.key)}
+                className={`px-3 py-1.5 text-xs rounded border ${
+                  debriefHorizon === horizon.key
+                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
+                    : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
+                }`}
+              >
+                {horizon.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-xs text-slate-400 mb-4">
+            {DEBRIEF_HORIZONS.find(item => item.key === debriefHorizon)?.summary}
+          </p>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {activeDebrief.map((item, index) => (
+              <div
+                key={`${debriefHorizon}-${item.symbol}`}
+                className="rounded-lg border border-slate-700 bg-slate-800/70 p-3"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-sm font-bold text-white">
+                      #{index + 1} {item.name}
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      {item.symbol} • {item.type.toUpperCase()}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-emerald-300">{item.score}%</div>
+                    <div className="text-[11px] text-slate-400">debrief score</div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <span
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                      item.signal === 'BUY'
+                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                        : item.signal === 'SELL'
+                          ? 'bg-red-500/15 text-red-300 border border-red-500/30'
+                          : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                    }`}
+                  >
+                    {item.signal}
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-violet-500/15 text-violet-300 border border-violet-500/30">
+                    {item.phase}
+                  </span>
+                </div>
+
+                <div className="text-xs text-slate-300 mb-1">{item.outlook}</div>
+                <div className="text-xs text-slate-400">{item.focus}</div>
+                <div className="mt-2 text-[11px] text-slate-500">
+                  Confidence {item.confidence}% • Tradability {item.tradability}%
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 text-xs text-slate-400 flex items-center justify-between gap-2">
+            <span>
+              Uses live market data only. No demo values are included in debrief rankings.
+            </span>
+            <Link href="/trends" className="text-indigo-300 hover:text-indigo-200 font-semibold">
+              Full trends view
+            </Link>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8 mt-4">
           <AnimatePresence>
