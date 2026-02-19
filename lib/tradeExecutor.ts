@@ -323,3 +323,155 @@ export function formatTradeForDisplay(trade: BotTrade): string {
 
   return lines.join('\n')
 }
+
+/**
+ * Execute trade from signal (website or telegram)
+ * Attempts MT5 execution, falls back to simulation
+ * Returns trade with ID and status
+ */
+export async function executeTradeFromSignal(params: {
+  asset: string
+  symbol: string
+  signal: 'BUY' | 'SELL'
+  entryPrice: number
+  stopLoss: number
+  takeProfit: number
+  orderType?: 'MARKET' | 'LIMIT'
+  category?: string
+  confidence?: number
+  accountBalance?: number
+  source?: string
+}): Promise<{
+  success: boolean
+  tradeId?: string
+  reason?: string
+}> {
+  try {
+    // Validate parameters
+    const validation = validateTradeParams(
+      params.asset,
+      params.entryPrice,
+      params.stopLoss,
+      params.takeProfit,
+      params.signal
+    )
+
+    if (!validation.valid) {
+      return { success: false, reason: validation.reason }
+    }
+
+    // Check if we can open new trade
+    const canOpen = canOpenNewTrade(params.symbol)
+    if (!canOpen.allowed) {
+      return { success: false, reason: canOpen.reason }
+    }
+
+    // Calculate position size
+    const riskPoints = Math.abs(params.entryPrice - params.stopLoss)
+    const positionSizeResult = calculatePositionSize(
+      params.accountBalance || 10000,
+      RISK_CONFIG.perTradePct,
+      params.entryPrice,
+      params.stopLoss
+    )
+
+    const positionSize = positionSizeResult.quantity
+
+    const riskReward = calculateRiskReward(params.entryPrice, params.stopLoss, params.takeProfit)
+
+    // Create trade order
+    const trade = createTradeOrder(
+      params.asset,
+      params.symbol,
+      params.signal,
+      params.entryPrice,
+      params.stopLoss,
+      params.takeProfit,
+      positionSize,
+      params.orderType || 'MARKET',
+      params.category || 'FOREX'
+    )
+
+    trade.confidence = params.confidence || 0.65
+    trade.riskReward = riskReward
+
+    // Try to execute on MT5 first
+    let mt5Success = false
+    if (process.env.MT5_ENABLED === 'true') {
+      try {
+        const { initMT5 } = await import('@/lib/mt5Client')
+        const mt5 = initMT5()
+        await mt5.connect()
+
+        const orderResult = await mt5.placeOrder({
+          symbol: params.symbol,
+          orderType: params.signal === 'BUY' ? 'BUY' : 'SELL',
+          volume: positionSize,
+          price: params.entryPrice,
+          stopLoss: params.stopLoss,
+          takeProfit: params.takeProfit,
+          comment: `Bot${params.source ? ` (${params.source})` : ''}`,
+        })
+
+        if (orderResult.success && orderResult.ticket) {
+          trade.status = 'OPEN'
+          trade.openTime = Date.now()
+          mt5Success = true
+          console.log(`[MT5_EXECUTION] Trade ${trade.id} executed (Ticket: ${orderResult.ticket})`)
+        }
+      } catch (error) {
+        console.warn(
+          '[MT5_EXECUTION_FAILED]',
+          error instanceof Error ? error.message : 'Unknown error'
+        )
+      }
+    }
+
+    // If MT5 not enabled or failed, use simulation
+    if (!mt5Success) {
+      const simulationResult = simulateTradeExecution(trade, params.entryPrice)
+      if (simulationResult.executed) {
+        trade.status = 'OPEN'
+        trade.openTime = Date.now()
+      }
+    }
+
+    // Track the trade
+    trackOpenTrade(trade)
+
+    // Send Telegram notification
+    if (process.env.SEND_TELEGRAM_UPDATES === 'true') {
+      try {
+        const { notifyTradeOpened } = await import('@/lib/telegramNotifier')
+        await notifyTradeOpened({
+          tradeId: trade.id,
+          asset: trade.asset,
+          signal: trade.signal,
+          entry: trade.entryPrice,
+          sl: trade.stopLoss,
+          tp: trade.takeProfit,
+          lotSize: trade.quantity,
+          rr: riskReward,
+          confidence: params.confidence || 0.65,
+          category: params.category || 'FOREX',
+        })
+      } catch (error) {
+        console.warn(
+          '[TELEGRAM_NOTIFY_ERROR]',
+          error instanceof Error ? error.message : 'Unknown error'
+        )
+      }
+    }
+
+    return {
+      success: true,
+      tradeId: trade.id,
+    }
+  } catch (error) {
+    console.error('[EXECUTE_TRADE_ERROR]', error)
+    return {
+      success: false,
+      reason: error instanceof Error ? error.message : 'Unknown execution error',
+    }
+  }
+}
