@@ -334,6 +334,10 @@ async function fetchTwelveDataHistory(
 
     const candles: UnifiedCandle[] = data.values
       .map((entry: TwelveDataTimeSeriesEntry) => {
+        if (!entry.datetime) {
+          return null
+        }
+
         const timestamp = Date.parse(entry.datetime)
         const open = toNumber(entry.open)
         const high = toNumber(entry.high)
