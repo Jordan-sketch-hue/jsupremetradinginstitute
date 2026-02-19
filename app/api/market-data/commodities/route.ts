@@ -7,7 +7,7 @@ interface CommodityPrice {
   change: number
   changePercent: number
   timestamp: string
-  dataSource: 'LIVE' | 'DEMO'
+  dataSource: 'LIVE'
 }
 
 const cache = new Map<string, { data: CommodityPrice[]; timestamp: number }>()
@@ -46,27 +46,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fallback to demo data if API fails
     if (!priceData) {
-      const basePrices: Record<string, number> = {
-        XAUUSD: 2000,
-        XAGUSD: 24,
-        XPTUSD: 950,
-        WTI: 75,
-      }
-      const basePrice = basePrices[symbol] || 100
-      priceData = {
-        symbol,
-        price: basePrice + (Math.random() - 0.5) * (basePrice * 0.02),
-        change: (Math.random() - 0.5) * 5,
-        changePercent: (Math.random() - 0.5) * 1,
-        timestamp: new Date().toISOString(),
-        dataSource: 'DEMO',
-      }
+      continue
     }
 
     results.push(priceData)
     cache.set(cacheKey, { data: [priceData], timestamp: Date.now() })
+  }
+
+  if (results.length === 0) {
+    return NextResponse.json(
+      { error: 'No live commodity data available', unavailableSymbols: symbols },
+      { status: 503 }
+    )
   }
 
   return NextResponse.json(results)

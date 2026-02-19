@@ -10,34 +10,6 @@ interface Candle {
   volume: number
 }
 
-// Fallback: Generate mock candles based on current price
-function generateMockCandles(currentPrice: number, count: number = 50) {
-  const candles = []
-  let price = currentPrice * 0.95
-
-  for (let i = count; i > 0; i--) {
-    const open = price
-    const change = (Math.random() - 0.5) * (price * 0.02)
-    const close = price + change
-    const high = Math.max(open, close) * (1 + Math.random() * 0.01)
-    const low = Math.min(open, close) * (1 - Math.random() * 0.01)
-    const volume = Math.floor(Math.random() * 10000000 + 1000000)
-
-    candles.push({
-      timestamp: Date.now() - i * 24 * 60 * 60 * 1000,
-      open: parseFloat(open.toFixed(4)),
-      high: parseFloat(high.toFixed(4)),
-      low: parseFloat(low.toFixed(4)),
-      close: parseFloat(close.toFixed(4)),
-      volume,
-    })
-
-    price = close
-  }
-
-  return candles
-}
-
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const rawSymbol = searchParams.get('symbol')
@@ -51,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   try {
     let candles: Candle[] | null = null
-    let dataSource = 'DEMO'
+    let dataSource = 'LIVE'
 
     const historical = await getHistoricalCandles(normalizedSymbol, assetType)
     if (historical) {
@@ -62,12 +34,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Priority 3: Mock data fallback (demo)
     if (!candles) {
-      const basePrice = Math.random() * 100 + 50
-      candles = generateMockCandles(basePrice, 60)
-      dataSource = 'DEMO'
-      console.log(`⚠️ Using DEMO data for ${symbol}`)
+      return NextResponse.json(
+        {
+          error: 'No live historical data available',
+          symbol,
+          dataSource: 'NONE',
+        },
+        { status: 503 }
+      )
     }
 
     return NextResponse.json({
@@ -83,8 +58,7 @@ export async function GET(request: NextRequest) {
       {
         error: 'Failed to fetch historical data',
         symbol,
-        candles: generateMockCandles(50, 50), // Fallback to mock
-        dataSource: 'DEMO',
+        dataSource: 'NONE',
       },
       { status: 500 }
     )

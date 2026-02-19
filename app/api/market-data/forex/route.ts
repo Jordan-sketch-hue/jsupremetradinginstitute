@@ -8,7 +8,7 @@ interface ForexPrice {
   timestamp: string
   change: number
   changePercent: number
-  dataSource: 'LIVE' | 'DEMO'
+  dataSource: 'LIVE'
 }
 
 // Cache with TTL to respect rate limits
@@ -42,18 +42,8 @@ async function fetchForexData(symbols: string[]): Promise<ForexPrice[]> {
       }
     }
 
-    // Last resort: demo data
     if (!priceData) {
-      const basePrice = Math.random() * 2 + 0.5
-      priceData = {
-        symbol,
-        bid: basePrice * 0.9999,
-        ask: basePrice * 1.0001,
-        timestamp: new Date().toISOString(),
-        change: (Math.random() - 0.5) * 0.01,
-        changePercent: (Math.random() - 0.5) * 0.5,
-        dataSource: 'DEMO',
-      }
+      continue
     }
 
     results.push(priceData)
@@ -73,6 +63,14 @@ export async function GET(request: NextRequest) {
 
   try {
     const data = await fetchForexData(symbols)
+
+    if (data.length === 0) {
+      return NextResponse.json(
+        { error: 'No live forex data available', unavailableSymbols: symbols },
+        { status: 503 }
+      )
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     console.error('Forex API error:', error)

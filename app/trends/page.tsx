@@ -21,7 +21,14 @@ interface AssetTrend {
   takeProfitTargets: Array<{ label: string; value: string }>
   reasoning: string
   lastUpdate: string
-  dataSource?: 'LIVE' | 'DEMO'
+  dataSource?: 'LIVE'
+}
+
+interface LiveFailureEntry {
+  assetType: string
+  symbol: string
+  reasons: string[]
+  timestamp: string
 }
 
 const ASSETS_CONFIG: Array<{
@@ -55,46 +62,13 @@ const ASSETS_CONFIG: Array<{
   { symbol: 'UK100', name: 'FTSE 100', type: 'indices' },
 ]
 
-function generateDemoAsset(config: (typeof ASSETS_CONFIG)[0]): AssetTrend {
-  const basePrice = Math.random() * 100 + 50
-  const change = (Math.random() - 0.5) * 2
-  const technicals: TechnicalIndicators = {
-    rsi: Math.floor(Math.random() * 60) + 25,
-    macdSignal: ['BULLISH', 'BEARISH', 'NEUTRAL'][Math.floor(Math.random() * 3)] as any,
-    momentum: (Math.random() - 0.5) * 10,
-    trend: ['UP', 'DOWN', 'SIDEWAYS'][Math.floor(Math.random() * 3)] as any,
-    signal: ['BUY', 'SELL', 'WAIT'][Math.floor(Math.random() * 3)] as any,
-    confidence: Math.floor(Math.random() * 40) + 50,
-  }
-
-  return {
-    symbol: config.symbol,
-    name: config.name,
-    type: config.type,
-    currentPrice: basePrice,
-    change24h: change,
-    changePercent24h: (change / basePrice) * 100,
-    technicals,
-    keyLevel: basePrice * 0.95,
-    entryZone: `${(basePrice * 0.98).toFixed(2)} - ${(basePrice * 1.01).toFixed(2)}`,
-    stopLoss: `${(basePrice * 0.92).toFixed(2)} (below support)`,
-    takeProfit: `${(basePrice * 1.08).toFixed(2)} (next target)`,
-    takeProfitTargets: [
-      { label: 'TP1', value: `${(basePrice * 1.02).toFixed(2)}` },
-      { label: 'TP2', value: `${(basePrice * 1.05).toFixed(2)}` },
-      { label: 'TP3', value: `${(basePrice * 1.08).toFixed(2)}` },
-    ],
-    reasoning: `Signal: ${technicals.signal} | Confidence: ${technicals.confidence}% | Trend: ${technicals.trend}`,
-    lastUpdate: new Date().toISOString(),
-  }
-}
-
 export default function TrendsPage() {
   const [assets, setAssets] = useState<AssetTrend[]>([])
   const [selectedAsset, setSelectedAsset] = useState<AssetTrend | null>(null)
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<string>('')
+  const [liveFailures, setLiveFailures] = useState<LiveFailureEntry[]>([])
 
   useEffect(() => {
     const cacheKey = 'trends-assets-cache'
@@ -104,7 +78,7 @@ export default function TrendsPage() {
         try {
           const parsed = JSON.parse(cached) as { assets: AssetTrend[]; lastUpdate: string }
           if (Array.isArray(parsed.assets)) {
-            setAssets(parsed.assets)
+            setAssets(parsed.assets.filter(asset => asset?.dataSource === 'LIVE'))
             setLastUpdate(parsed.lastUpdate)
             setLoading(false)
           }
@@ -152,13 +126,19 @@ export default function TrendsPage() {
           a => a.symbol
         )
 
-        const [cryptoResponse, forexResponse, indicesResponse, commoditiesResponse] =
-          await Promise.all([
-            fetch(`/api/market-data/crypto?symbols=${cryptoSymbols.join(',')}`),
-            fetch(`/api/market-data/forex?symbols=${forexSymbols.join(',')}`),
-            fetch(`/api/market-data/indices?symbols=${indicesSymbols.join(',')}`),
-            fetch(`/api/market-data/commodities?symbols=${commoditiesSymbols.join(',')}`),
-          ])
+        const [
+          cryptoResponse,
+          forexResponse,
+          indicesResponse,
+          commoditiesResponse,
+          reportResponse,
+        ] = await Promise.all([
+          fetch(`/api/market-data/crypto?symbols=${cryptoSymbols.join(',')}`),
+          fetch(`/api/market-data/forex?symbols=${forexSymbols.join(',')}`),
+          fetch(`/api/market-data/indices?symbols=${indicesSymbols.join(',')}`),
+          fetch(`/api/market-data/commodities?symbols=${commoditiesSymbols.join(',')}`),
+          fetch('/api/market-data/live-report'),
+        ])
 
         const [cryptoList, forexList, indicesList, commoditiesList] = await Promise.all([
           parseDataList(cryptoResponse),
@@ -166,6 +146,15 @@ export default function TrendsPage() {
           parseDataList(indicesResponse),
           parseDataList(commoditiesResponse),
         ])
+
+        try {
+          if (reportResponse.ok) {
+            const reportPayload = await reportResponse.json()
+            setLiveFailures(Array.isArray(reportPayload?.entries) ? reportPayload.entries : [])
+          }
+        } catch {
+          setLiveFailures([])
+        }
 
         const cryptoData: Record<string, any> = {}
         const forexData: Record<string, any> = {}
@@ -199,7 +188,7 @@ export default function TrendsPage() {
               currentPrice: crypto.price,
               change24h: crypto.change24h,
               changePercent24h: crypto.changePercent24h,
-              dataSource: crypto.dataSource || 'DEMO',
+              dataSource: 'LIVE',
               technicals: {
                 rsi: Math.floor(crypto.changePercent24h * 0.7 + 50),
                 macdSignal: crypto.changePercent24h > 0 ? 'BULLISH' : 'BEARISH',
@@ -227,7 +216,7 @@ export default function TrendsPage() {
               currentPrice: forex.bid,
               change24h: forex.change,
               changePercent24h: forex.changePercent,
-              dataSource: forex.dataSource || 'DEMO',
+              dataSource: 'LIVE',
               technicals: {
                 rsi: Math.floor(Math.random() * 60) + 25,
                 macdSignal: 'NEUTRAL',
@@ -255,7 +244,7 @@ export default function TrendsPage() {
               currentPrice: index.price,
               change24h: index.change,
               changePercent24h: index.changePercent,
-              dataSource: index.dataSource || 'DEMO',
+              dataSource: 'LIVE',
               technicals: {
                 rsi: Math.floor(Math.abs(index.changePercent) * 10 + 45),
                 macdSignal: index.changePercent > 0 ? 'BULLISH' : 'BEARISH',
@@ -292,7 +281,7 @@ export default function TrendsPage() {
               currentPrice: commodity.price,
               change24h: commodity.change,
               changePercent24h: commodity.changePercent,
-              dataSource: commodity.dataSource || 'DEMO',
+              dataSource: 'LIVE',
               technicals: {
                 rsi: Math.floor(Math.abs(commodity.changePercent) * 15 + 40),
                 macdSignal: commodity.changePercent > 0 ? 'BULLISH' : 'BEARISH',
@@ -315,11 +304,11 @@ export default function TrendsPage() {
               lastUpdate: new Date().toISOString(),
             }
           } else {
-            data = generateDemoAsset(config)
+            return null
           }
 
           return data
-        })
+        }).filter((asset): asset is AssetTrend => asset !== null)
 
         assetsList.sort((a, b) => {
           // Priority: BUY > SELL > WAIT, then by confidence
@@ -344,23 +333,14 @@ export default function TrendsPage() {
         }
       } catch (error) {
         console.error('Error fetching market data:', error)
-        const demoAssets = ASSETS_CONFIG.map(generateDemoAsset).sort((a, b) => {
-          const signalOrder = { BUY: 0, SELL: 1, WAIT: 2 }
-          const signalDiff =
-            signalOrder[a.technicals.signal as keyof typeof signalOrder] -
-            signalOrder[b.technicals.signal as keyof typeof signalOrder]
-
-          if (signalDiff !== 0) return signalDiff
-          return b.technicals.confidence - a.technicals.confidence
-        })
-        setAssets(demoAssets)
+        setAssets([])
         const updateTime = new Date().toLocaleTimeString()
         setLastUpdate(updateTime)
         setLoading(false)
         if (typeof window !== 'undefined') {
           window.localStorage.setItem(
             cacheKey,
-            JSON.stringify({ assets: demoAssets, lastUpdate: updateTime })
+            JSON.stringify({ assets: [], lastUpdate: updateTime })
           )
         }
       } finally {
@@ -399,6 +379,28 @@ export default function TrendsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pt-24">
       <div className="max-w-7xl mx-auto px-4">
+        {liveFailures.length > 0 && (
+          <div className="mb-4 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-200">
+            <h3 className="font-bold mb-2">Live Data Failure Report</h3>
+            <p className="text-xs mb-2">
+              Demo mode is disabled. Symbols below were skipped because live providers failed.
+            </p>
+            <div className="max-h-48 overflow-auto space-y-2 text-xs">
+              {liveFailures.slice(0, 20).map((entry, index) => (
+                <div
+                  key={`${entry.symbol}-${entry.timestamp}-${index}`}
+                  className="border-b border-red-500/20 pb-2"
+                >
+                  <div className="font-semibold">
+                    {entry.symbol} ({entry.assetType})
+                  </div>
+                  <div>{entry.reasons.join(' | ')}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8 mt-4">
           <AnimatePresence>
             {displayedAssets.map((asset, idx) => (
@@ -420,14 +422,8 @@ export default function TrendsPage() {
                 {/* Top badges */}
                 <div className="flex gap-2 mb-2 flex-wrap">
                   {/* Data Source Badge */}
-                  <div
-                    className={`px-2 py-1 rounded-full text-xs font-bold ${
-                      asset.dataSource === 'LIVE'
-                        ? 'bg-gradient-to-r from-green-500 to-green-700 text-white'
-                        : 'bg-gradient-to-r from-gray-500 to-gray-700 text-white'
-                    }`}
-                  >
-                    {asset.dataSource === 'LIVE' ? 'LIVE' : 'DEMO'}
+                  <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-green-500 to-green-700 text-white">
+                    LIVE
                   </div>
 
                   {asset.technicals.confidence >= 75 && (

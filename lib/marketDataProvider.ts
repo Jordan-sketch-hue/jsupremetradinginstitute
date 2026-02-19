@@ -21,6 +21,13 @@ export interface UnifiedHistory {
   provider: Provider
 }
 
+export interface LiveFailureReportEntry {
+  assetType: string
+  symbol: string
+  reasons: string[]
+  timestamp: string
+}
+
 interface TwelveDataTimeSeriesEntry {
   datetime?: string
   open?: unknown
@@ -100,6 +107,28 @@ const COMMODITY_YAHOO_SYMBOL_MAP: Record<string, string> = {
   WTI: 'CL=F',
 }
 
+const liveFailureReport: LiveFailureReportEntry[] = []
+const LIVE_FAILURE_REPORT_MAX = 300
+
+function recordLiveFailure(assetType: string, symbol: string, reasons: string[]) {
+  const uniqueReasons = Array.from(new Set(reasons.filter(reason => Boolean(reason?.trim()))))
+
+  liveFailureReport.unshift({
+    assetType,
+    symbol,
+    reasons: uniqueReasons.length > 0 ? uniqueReasons : ['Unknown live provider failure'],
+    timestamp: new Date().toISOString(),
+  })
+
+  if (liveFailureReport.length > LIVE_FAILURE_REPORT_MAX) {
+    liveFailureReport.length = LIVE_FAILURE_REPORT_MAX
+  }
+}
+
+export function getLiveFailureReport(limit: number = 100): LiveFailureReportEntry[] {
+  return liveFailureReport.slice(0, Math.max(1, limit))
+}
+
 function toNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value
@@ -149,23 +178,37 @@ function mapYahooInterval(assetType: string): { interval: string; period: string
   return { interval: '1d', period: '6mo' }
 }
 
-async function fetchTwelveDataQuote(symbol: string): Promise<UnifiedQuote | null> {
+async function fetchTwelveDataQuote(
+  symbol: string,
+  reasons?: string[]
+): Promise<UnifiedQuote | null> {
   if (!TWELVE_DATA_API_KEY) return null
 
   try {
     const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbol)}&apikey=${TWELVE_DATA_API_KEY}`
     const response = await fetch(url, { cache: 'no-store' })
-    if (!response.ok) return null
+    if (!response.ok) {
+      reasons?.push(`Twelve Data HTTP error ${response.status} for ${symbol}`)
+      return null
+    }
 
     const data = await response.json()
-    if (data?.status === 'error') return null
+    if (data?.status === 'error') {
+      reasons?.push(
+        `Twelve Data rejected ${symbol}: ${String(data?.message || data?.code || 'Unknown error')}`
+      )
+      return null
+    }
 
     const price = toNumber(data?.close ?? data?.price)
     const previousClose = toNumber(data?.previous_close)
     const rawChange = toNumber(data?.change)
     const rawChangePercent = toNumber(data?.percent_change)
 
-    if (!price || price <= 0) return null
+    if (!price || price <= 0) {
+      reasons?.push(`Twelve Data returned invalid price for ${symbol}`)
+      return null
+    }
 
     const change = rawChange ?? (previousClose ? price - previousClose : 0)
     const changePercent =
@@ -179,6 +222,7 @@ async function fetchTwelveDataQuote(symbol: string): Promise<UnifiedQuote | null
       provider: 'TWELVE_DATA',
     }
   } catch (error) {
+    reasons?.push(`Twelve Data exception for ${symbol}`)
     console.error(`Twelve Data quote error for ${symbol}:`, error)
     return null
   }
@@ -187,7 +231,8 @@ async function fetchTwelveDataQuote(symbol: string): Promise<UnifiedQuote | null
 async function fetchYahooChart(
   ticker: string,
   interval: string,
-  range: string
+  range: string,
+  reasons?: string[]
 ): Promise<YahooChartResult | null> {
   try {
     const url =
@@ -204,13 +249,20 @@ async function fetchYahooChart(
     })
 
     if (!response.ok) {
+      reasons?.push(`Yahoo HTTP error ${response.status} for ${ticker}`)
       return null
     }
 
     const data = (await response.json()) as YahooChartResponse
     const result = data?.chart?.result?.[0]
-    return result || null
+    if (!result) {
+      reasons?.push(`Yahoo returned empty chart result for ${ticker}`)
+      return null
+    }
+
+    return result
   } catch (error) {
+    reasons?.push(`Yahoo exception for ${ticker}`)
     console.error(`Yahoo chart error for ${ticker}:`, error)
     return null
   }
@@ -229,8 +281,8 @@ function getLastFinite(values: Array<number | null> | undefined): number | null 
   return null
 }
 
-async function fetchYahooQuote(ticker: string): Promise<UnifiedQuote | null> {
-  const result = await fetchYahooChart(ticker, '1d', '5d')
+async function fetchYahooQuote(ticker: string, reasons?: string[]): Promise<UnifiedQuote | null> {
+  const result = await fetchYahooChart(ticker, '1d', '5d', reasons)
   if (!result) return null
 
   const quote = result.indicators?.quote?.[0]
@@ -239,7 +291,10 @@ async function fetchYahooQuote(ticker: string): Promise<UnifiedQuote | null> {
   const previousClose = toNumber(result.meta?.previousClose)
   const price = metaPrice ?? closePrice
 
-  if (!price || price <= 0) return null
+  if (!price || price <= 0) {
+    reasons?.push(`Yahoo returned invalid price for ${ticker}`)
+    return null
+  }
 
   const change = previousClose ? price - previousClose : 0
   const changePercent = previousClose && previousClose !== 0 ? (change / previousClose) * 100 : 0
@@ -254,7 +309,8 @@ async function fetchYahooQuote(ticker: string): Promise<UnifiedQuote | null> {
 
 async function fetchTwelveDataHistory(
   symbol: string,
-  assetType: string
+  assetType: string,
+  reasons?: string[]
 ): Promise<UnifiedHistory | null> {
   if (!TWELVE_DATA_API_KEY) return null
 
@@ -265,10 +321,14 @@ async function fetchTwelveDataHistory(
       `&interval=${interval}&outputsize=120&apikey=${TWELVE_DATA_API_KEY}`
 
     const response = await fetch(url, { cache: 'no-store' })
-    if (!response.ok) return null
+    if (!response.ok) {
+      reasons?.push(`Twelve Data history HTTP error ${response.status} for ${symbol}`)
+      return null
+    }
 
     const data = (await response.json()) as TwelveDataTimeSeriesResponse
     if (data?.status === 'error' || !Array.isArray(data?.values) || data.values.length === 0) {
+      reasons?.push(`Twelve Data history unavailable for ${symbol}`)
       return null
     }
 
@@ -290,13 +350,17 @@ async function fetchTwelveDataHistory(
       .filter((value: UnifiedCandle | null): value is UnifiedCandle => value !== null)
       .reverse()
 
-    if (candles.length === 0) return null
+    if (candles.length === 0) {
+      reasons?.push(`Twelve Data history contained no valid candles for ${symbol}`)
+      return null
+    }
 
     return {
       candles,
       provider: 'TWELVE_DATA',
     }
   } catch (error) {
+    reasons?.push(`Twelve Data history exception for ${symbol}`)
     console.error(`Twelve Data history error for ${symbol}:`, error)
     return null
   }
@@ -304,10 +368,11 @@ async function fetchTwelveDataHistory(
 
 async function fetchYahooHistory(
   ticker: string,
-  assetType: string
+  assetType: string,
+  reasons?: string[]
 ): Promise<UnifiedHistory | null> {
   const { interval, period } = mapYahooInterval(assetType)
-  const result = await fetchYahooChart(ticker, interval, period)
+  const result = await fetchYahooChart(ticker, interval, period, reasons)
   if (!result) return null
 
   const timestamps = result.timestamp || []
@@ -318,7 +383,10 @@ async function fetchYahooHistory(
   const closeList = quote?.close || []
   const volumeList = quote?.volume || []
 
-  if (timestamps.length === 0 || closeList.length === 0) return null
+  if (timestamps.length === 0 || closeList.length === 0) {
+    reasons?.push(`Yahoo history unavailable for ${ticker}`)
+    return null
+  }
 
   const candles: UnifiedCandle[] = timestamps
     .map((timestampSeconds, index) => {
@@ -344,7 +412,10 @@ async function fetchYahooHistory(
     })
     .filter((value: UnifiedCandle | null): value is UnifiedCandle => value !== null)
 
-  if (candles.length === 0) return null
+  if (candles.length === 0) {
+    reasons?.push(`Yahoo history contained no valid candles for ${ticker}`)
+    return null
+  }
 
   return {
     candles,
@@ -354,7 +425,16 @@ async function fetchYahooHistory(
 
 export async function getForexQuote(symbol: string): Promise<UnifiedQuote | null> {
   const normalized = normalizeForex(symbol)
-  return (await fetchTwelveDataQuote(normalized)) || fetchYahooQuote(toYahooForexTicker(normalized))
+  const reasons: string[] = []
+  const quote =
+    (await fetchTwelveDataQuote(normalized, reasons)) ||
+    (await fetchYahooQuote(toYahooForexTicker(normalized), reasons))
+
+  if (!quote) {
+    recordLiveFailure('forex', symbol, reasons)
+  }
+
+  return quote
 }
 
 export async function getCommodityQuote(symbol: string): Promise<UnifiedQuote | null> {
@@ -362,7 +442,16 @@ export async function getCommodityQuote(symbol: string): Promise<UnifiedQuote | 
   const twelveSymbol = COMMODITY_TWELVE_SYMBOL_MAP[normalized] || normalized
   const yahooSymbol = COMMODITY_YAHOO_SYMBOL_MAP[normalized] || normalized
 
-  return (await fetchTwelveDataQuote(twelveSymbol)) || fetchYahooQuote(yahooSymbol)
+  const reasons: string[] = []
+  const quote =
+    (await fetchTwelveDataQuote(twelveSymbol, reasons)) ||
+    (await fetchYahooQuote(yahooSymbol, reasons))
+
+  if (!quote) {
+    recordLiveFailure('commodities', symbol, reasons)
+  }
+
+  return quote
 }
 
 export async function getIndexQuote(symbol: string): Promise<UnifiedQuote | null> {
@@ -370,14 +459,30 @@ export async function getIndexQuote(symbol: string): Promise<UnifiedQuote | null
   const twelveSymbol = INDEX_TWELVE_SYMBOL_MAP[normalized] || normalized
   const yahooSymbol = INDEX_YAHOO_SYMBOL_MAP[normalized] || normalized
 
-  return (await fetchTwelveDataQuote(twelveSymbol)) || fetchYahooQuote(yahooSymbol)
+  const reasons: string[] = []
+  const quote =
+    (await fetchTwelveDataQuote(twelveSymbol, reasons)) ||
+    (await fetchYahooQuote(yahooSymbol, reasons))
+
+  if (!quote) {
+    recordLiveFailure('indices', symbol, reasons)
+  }
+
+  return quote
 }
 
 export async function getCryptoQuote(symbol: string): Promise<UnifiedQuote | null> {
   const normalized = normalizeCrypto(symbol)
-  return (
-    (await fetchTwelveDataQuote(normalized)) || fetchYahooQuote(toYahooCryptoTicker(normalized))
-  )
+  const reasons: string[] = []
+  const quote =
+    (await fetchTwelveDataQuote(normalized, reasons)) ||
+    (await fetchYahooQuote(toYahooCryptoTicker(normalized), reasons))
+
+  if (!quote) {
+    recordLiveFailure('crypto', symbol, reasons)
+  }
+
+  return quote
 }
 
 export async function getHistoricalCandles(
@@ -386,47 +491,73 @@ export async function getHistoricalCandles(
 ): Promise<UnifiedHistory | null> {
   const normalizedAssetType = assetType.toLowerCase()
   const normalizedSymbol = symbol.toUpperCase()
+  const reasons: string[] = []
 
   if (normalizedAssetType === 'forex') {
     const twelveSymbol = normalizeForex(normalizedSymbol)
     const yahooSymbol = toYahooForexTicker(normalizedSymbol)
-    return (
-      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType)) ||
-      fetchYahooHistory(yahooSymbol, normalizedAssetType)
-    )
+    const history =
+      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType, reasons)) ||
+      (await fetchYahooHistory(yahooSymbol, normalizedAssetType, reasons))
+
+    if (!history) {
+      recordLiveFailure('forex-history', symbol, reasons)
+    }
+
+    return history
   }
 
   if (normalizedAssetType === 'crypto') {
     const twelveSymbol = normalizeCrypto(normalizedSymbol)
     const yahooSymbol = toYahooCryptoTicker(normalizedSymbol)
-    return (
-      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType)) ||
-      fetchYahooHistory(yahooSymbol, normalizedAssetType)
-    )
+    const history =
+      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType, reasons)) ||
+      (await fetchYahooHistory(yahooSymbol, normalizedAssetType, reasons))
+
+    if (!history) {
+      recordLiveFailure('crypto-history', symbol, reasons)
+    }
+
+    return history
   }
 
   if (normalizedAssetType === 'commodities') {
     const clean = normalizedSymbol.replace(/[^A-Z]/g, '')
     const twelveSymbol = COMMODITY_TWELVE_SYMBOL_MAP[clean] || clean
     const yahooSymbol = COMMODITY_YAHOO_SYMBOL_MAP[clean] || clean
-    return (
-      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType)) ||
-      fetchYahooHistory(yahooSymbol, normalizedAssetType)
-    )
+    const history =
+      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType, reasons)) ||
+      (await fetchYahooHistory(yahooSymbol, normalizedAssetType, reasons))
+
+    if (!history) {
+      recordLiveFailure('commodities-history', symbol, reasons)
+    }
+
+    return history
   }
 
   if (normalizedAssetType === 'index' || normalizedAssetType === 'indices') {
     const clean = normalizedSymbol.replace(/[^A-Z0-9]/g, '')
     const twelveSymbol = INDEX_TWELVE_SYMBOL_MAP[clean] || clean
     const yahooSymbol = INDEX_YAHOO_SYMBOL_MAP[clean] || clean
-    return (
-      (await fetchTwelveDataHistory(twelveSymbol, 'indices')) ||
-      fetchYahooHistory(yahooSymbol, 'indices')
-    )
+    const history =
+      (await fetchTwelveDataHistory(twelveSymbol, 'indices', reasons)) ||
+      (await fetchYahooHistory(yahooSymbol, 'indices', reasons))
+
+    if (!history) {
+      recordLiveFailure('indices-history', symbol, reasons)
+    }
+
+    return history
   }
 
-  return (
-    (await fetchTwelveDataHistory(normalizedSymbol, normalizedAssetType)) ||
-    fetchYahooHistory(normalizedSymbol, normalizedAssetType)
-  )
+  const history =
+    (await fetchTwelveDataHistory(normalizedSymbol, normalizedAssetType, reasons)) ||
+    (await fetchYahooHistory(normalizedSymbol, normalizedAssetType, reasons))
+
+  if (!history) {
+    recordLiveFailure(`${normalizedAssetType}-history`, symbol, reasons)
+  }
+
+  return history
 }

@@ -9,7 +9,7 @@ interface CryptoPrice {
   change24h: number
   changePercent24h: number
   timestamp: string
-  dataSource: 'LIVE' | 'DEMO'
+  dataSource: 'LIVE'
 }
 
 const cache = new Map<string, { data: CryptoPrice[]; timestamp: number }>()
@@ -43,24 +43,8 @@ async function fetchCryptoData(symbols: string[]): Promise<CryptoPrice[]> {
       }
     }
 
-    // Fallback to demo data
     if (!priceData) {
-      const basePrices: Record<string, number> = {
-        'BTC/USD': 45000,
-        'ETH/USD': 2500,
-        'BCH/USD': 300,
-      }
-      const basePrice = basePrices[symbol] || 100
-      priceData = {
-        symbol,
-        price: basePrice + (Math.random() - 0.5) * (basePrice * 0.02),
-        marketCap: 0,
-        volume24h: 0,
-        change24h: (Math.random() - 0.5) * (basePrice * 0.01),
-        changePercent24h: (Math.random() - 0.5) * 2,
-        timestamp: new Date().toISOString(),
-        dataSource: 'DEMO',
-      }
+      continue
     }
 
     results.push(priceData)
@@ -80,6 +64,14 @@ export async function GET(request: NextRequest) {
 
   try {
     const data = await fetchCryptoData(symbols)
+
+    if (data.length === 0) {
+      return NextResponse.json(
+        { error: 'No live crypto data available', unavailableSymbols: symbols },
+        { status: 503 }
+      )
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     console.error('Crypto API error:', error)
