@@ -1,4 +1,5 @@
 import { spawn } from 'child_process'
+import fs from 'fs'
 import path from 'path'
 
 type Provider = 'TWELVE_DATA' | 'YAHOO'
@@ -183,7 +184,16 @@ async function fetchTwelveDataQuote(symbol: string): Promise<UnifiedQuote | null
 
 async function runPythonYfinance(args: string[]): Promise<unknown | null> {
   const scriptPath = path.join(process.cwd(), 'scripts', 'yfinance_fallback.py')
+  const venvPythonWindows = path.join(process.cwd(), '.venv', 'Scripts', 'python.exe')
+  const venvPythonUnix = path.join(process.cwd(), '.venv', 'bin', 'python')
+
   const attempts: Array<{ cmd: string; cmdArgs: string[] }> = [
+    ...(fs.existsSync(venvPythonWindows)
+      ? [{ cmd: venvPythonWindows, cmdArgs: [scriptPath, ...args] }]
+      : []),
+    ...(fs.existsSync(venvPythonUnix)
+      ? [{ cmd: venvPythonUnix, cmdArgs: [scriptPath, ...args] }]
+      : []),
     { cmd: 'python3', cmdArgs: [scriptPath, ...args] },
     { cmd: 'python', cmdArgs: [scriptPath, ...args] },
     { cmd: 'py', cmdArgs: ['-3', scriptPath, ...args] },
@@ -301,9 +311,12 @@ async function fetchYahooHistory(
   assetType: string
 ): Promise<UnifiedHistory | null> {
   const { interval, period } = mapYahooInterval(assetType)
-  const result = (await runPythonYfinance(['history', ticker, interval, period])) as
-    | YfinanceHistoryResult
-    | null
+  const result = (await runPythonYfinance([
+    'history',
+    ticker,
+    interval,
+    period,
+  ])) as YfinanceHistoryResult | null
   if (!result?.ok || !Array.isArray(result?.candles) || result.candles.length === 0) return null
 
   const candles: UnifiedCandle[] = result.candles
