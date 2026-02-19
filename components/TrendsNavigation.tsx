@@ -2,25 +2,81 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronDown, Zap } from 'lucide-react'
+import {
+  Activity,
+  BarChart3,
+  Bot,
+  Briefcase,
+  CandlestickChart,
+  ChevronDown,
+  CircleAlert,
+  Globe2,
+  LineChart,
+  Zap,
+} from 'lucide-react'
 
 interface TrendsSection {
   id: string
   label: string
   category: 'forex' | 'crypto' | 'indices' | 'commodities'
-  icon: string
+  icon: React.ReactNode
 }
 
 const TRENDS_SECTIONS: TrendsSection[] = [
-  { id: 'overview', label: 'Overview', category: 'forex', icon: '🧭' },
-  { id: 'signals', label: 'Live Signals', category: 'forex', icon: '🧠' },
-  { id: 'forex', label: 'Forex Pairs', category: 'forex', icon: '💱' },
-  { id: 'crypto', label: 'Crypto', category: 'crypto', icon: '₿' },
-  { id: 'indices', label: 'Indices', category: 'indices', icon: '📊' },
-  { id: 'commodities', label: 'Commodities', category: 'commodities', icon: '⛽' },
-  { id: 'debrief', label: 'Market Debrief', category: 'forex', icon: '📈' },
-  { id: 'failures', label: 'Analysis Failures', category: 'forex', icon: '⚠️' },
-  { id: 'dashboard', label: 'Bot Dashboard', category: 'forex', icon: '🤖' },
+  {
+    id: 'overview',
+    label: 'Overview',
+    category: 'forex',
+    icon: <Globe2 className="h-4 w-4" />,
+  },
+  {
+    id: 'signals',
+    label: 'Live Signals',
+    category: 'forex',
+    icon: <Activity className="h-4 w-4" />,
+  },
+  {
+    id: 'forex',
+    label: 'Forex Pairs',
+    category: 'forex',
+    icon: <LineChart className="h-4 w-4" />,
+  },
+  {
+    id: 'crypto',
+    label: 'Crypto',
+    category: 'crypto',
+    icon: <CandlestickChart className="h-4 w-4" />,
+  },
+  {
+    id: 'indices',
+    label: 'Indices',
+    category: 'indices',
+    icon: <BarChart3 className="h-4 w-4" />,
+  },
+  {
+    id: 'commodities',
+    label: 'Commodities',
+    category: 'commodities',
+    icon: <Briefcase className="h-4 w-4" />,
+  },
+  {
+    id: 'debrief',
+    label: 'Market Debrief',
+    category: 'forex',
+    icon: <LineChart className="h-4 w-4" />,
+  },
+  {
+    id: 'failures',
+    label: 'Analysis Failures',
+    category: 'forex',
+    icon: <CircleAlert className="h-4 w-4" />,
+  },
+  {
+    id: 'dashboard',
+    label: 'Bot Dashboard',
+    category: 'forex',
+    icon: <Bot className="h-4 w-4" />,
+  },
 ]
 
 interface TrendsNavigationProps {
@@ -84,7 +140,7 @@ export default function TrendsNavigation({ onNavigate, activeSection }: TrendsNa
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
                 }`}
               >
-                <span className="mr-1.5">{section.icon}</span>
+                <span className="mr-1.5 text-slate-300">{section.icon}</span>
                 {section.label}
               </motion.button>
             ))}
