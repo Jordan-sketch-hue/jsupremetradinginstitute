@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const signal = searchParams.get('signal') || 'BUY'
   const currentPrice = parseFloat(searchParams.get('price') || '0')
   const assetType = searchParams.get('type') || 'forex'
+  const timeframe = (searchParams.get('timeframe') || '1h').toLowerCase()
 
   if (!symbol || currentPrice === 0) {
     return NextResponse.json({ error: 'Symbol and price required' }, { status: 400 })
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     // Fetch historical candles
     const histResponse = await fetch(
-      `${request.nextUrl.origin}/api/market-data/historical?symbol=${symbol}&type=${assetType}`,
+      `${request.nextUrl.origin}/api/market-data/historical?symbol=${symbol}&type=${assetType}&timeframe=${timeframe}`,
       { cache: 'no-store' }
     )
 
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
       nearestOB,
       support,
       resistance,
+      timeframe,
       candleCount: candles.length,
       timestamp: Date.now(),
     })

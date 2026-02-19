@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const symbol = rawSymbol?.toUpperCase()
   const normalizedSymbol = symbol ? symbol.replace(/[^A-Z0-9/\-]/g, '') : ''
   const assetType = searchParams.get('type') || 'forex'
+  const timeframe = (searchParams.get('timeframe') || '1h').toLowerCase()
 
   if (!symbol) {
     return NextResponse.json({ error: 'Symbol required' }, { status: 400 })
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     let candles: Candle[] | null = null
     let dataSource = 'LIVE'
 
-    const historical = await getHistoricalCandles(normalizedSymbol, assetType)
+    const historical = await getHistoricalCandles(normalizedSymbol, assetType, timeframe)
     if (historical) {
       candles = historical.candles
       dataSource = historical.provider
@@ -47,8 +48,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       symbol,
-      candles: candles.slice(-50), // Return last 50 candles for order block detection
-      count: candles.slice(-50).length,
+      candles: candles.slice(-120),
+      count: candles.slice(-120).length,
+      timeframe,
       dataSource,
       timestamp: Date.now(),
     })

@@ -5,22 +5,30 @@ import { OrderBlock, Candle } from '@/lib/orderBlockDetection'
 
 interface OrderBlockChartProps {
   symbol: string
+  timeframe: string
   candles: Candle[]
   orderBlocks: OrderBlock[]
   support: number[]
   resistance: number[]
   nearestOB: OrderBlock | null
   currentPrice: number
+  entryPrice: number
+  stopLoss: number
+  takeProfitTargets: Array<{ label: string; price: number }>
 }
 
 export default function OrderBlockChart({
   symbol,
+  timeframe,
   candles,
   orderBlocks,
   support,
   resistance,
   nearestOB,
   currentPrice,
+  entryPrice,
+  stopLoss,
+  takeProfitTargets,
 }: OrderBlockChartProps) {
   const [chartWidth, setChartWidth] = useState(800)
   const [chartHeight] = useState(400)
@@ -36,8 +44,15 @@ export default function OrderBlockChart({
 
   // Calculate price range and pixel mapping
   const prices = candles.map(c => [c.high, c.low, c.close]).flat()
-  const minPrice = Math.min(...prices)
-  const maxPrice = Math.max(...prices)
+  const overlayPrices = [
+    currentPrice,
+    entryPrice,
+    stopLoss,
+    ...takeProfitTargets.map(tp => tp.price),
+  ]
+  const allPrices = [...prices, ...overlayPrices]
+  const minPrice = Math.min(...allPrices)
+  const maxPrice = Math.max(...allPrices)
   const priceRange = maxPrice - minPrice
   const padding = priceRange * 0.1
 
@@ -86,7 +101,7 @@ export default function OrderBlockChart({
   })
 
   // Render order blocks
-  const obElements = orderBlocks.slice(-5).map((ob, i) => {
+  const obElements = orderBlocks.slice(-8).map((ob, i) => {
     const y1 = priceToY(ob.range.high)
     const y2 = priceToY(ob.range.low)
     const height = Math.abs(y2 - y1)
@@ -116,6 +131,9 @@ export default function OrderBlockChart({
           strokeWidth="2"
           strokeDasharray="4"
         />
+        <text x="8" y={Math.min(y1, y2) - 4} fill={borderColor} fontSize="11" fontWeight="700">
+          {ob.type === 'BULLISH' ? 'Bullish OB' : 'Bearish OB'}
+        </text>
       </g>
     )
   })
@@ -160,11 +178,15 @@ export default function OrderBlockChart({
 
   // Current price line
   const yCurrentPrice = priceToY(currentPrice)
+  const yEntry = priceToY(entryPrice)
+  const yStop = priceToY(stopLoss)
 
   return (
     <div className="w-full bg-slate-800 rounded-lg p-4 border border-slate-700">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-semibold text-slate-100">{symbol} Price Action</h3>
+        <h3 className="text-lg font-semibold text-slate-100">
+          {symbol} Price Action ({timeframe.toUpperCase()})
+        </h3>
         <div className="text-sm text-slate-400">Current: ${currentPrice.toFixed(4)}</div>
       </div>
 
@@ -209,6 +231,56 @@ export default function OrderBlockChart({
             strokeWidth="2"
             strokeDasharray="6"
           />
+          <text x={8} y={yCurrentPrice - 6} fill="#a78bfa" fontSize="11" fontWeight="700">
+            Current
+          </text>
+
+          <line
+            x1="0"
+            y1={yEntry}
+            x2={chartWidth}
+            y2={yEntry}
+            stroke="#22c55e"
+            strokeWidth="1.5"
+            strokeDasharray="4"
+          />
+          <text x={8} y={yEntry - 6} fill="#22c55e" fontSize="11" fontWeight="700">
+            Entry
+          </text>
+
+          <line
+            x1="0"
+            y1={yStop}
+            x2={chartWidth}
+            y2={yStop}
+            stroke="#ef4444"
+            strokeWidth="1.5"
+            strokeDasharray="4"
+          />
+          <text x={8} y={yStop - 6} fill="#ef4444" fontSize="11" fontWeight="700">
+            Stop Loss
+          </text>
+
+          {takeProfitTargets.map(tp => {
+            const y = priceToY(tp.price)
+            return (
+              <g key={`tp-${tp.label}`}>
+                <line
+                  x1="0"
+                  y1={y}
+                  x2={chartWidth}
+                  y2={y}
+                  stroke="#10b981"
+                  strokeWidth="1.25"
+                  strokeDasharray="3"
+                  opacity="0.8"
+                />
+                <text x={chartWidth - 70} y={y - 6} fill="#10b981" fontSize="10" fontWeight="700">
+                  {tp.label}
+                </text>
+              </g>
+            )
+          })}
         </svg>
       </div>
 
@@ -229,6 +301,14 @@ export default function OrderBlockChart({
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 border-2 border-amber-500" />
           <span>Resistance Level</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 border-2 border-green-500" />
+          <span>Entry / TP Lines</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 border-2 border-red-500" />
+          <span>Stop Loss Line</span>
         </div>
       </div>
 

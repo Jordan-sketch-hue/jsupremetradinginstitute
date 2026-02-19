@@ -166,14 +166,32 @@ function toYahooCryptoTicker(value: string): string {
   return `${clean.slice(0, 3)}-${clean.slice(3, 6)}`
 }
 
-function mapTwelveInterval(assetType: string): string {
-  if (assetType === 'crypto') return '1h'
+function normalizeTimeframe(timeframe?: string): '15m' | '1h' | '4h' | '1d' {
+  const value = (timeframe || '').toLowerCase()
+  if (value === '15m' || value === '1h' || value === '4h' || value === '1d') {
+    return value
+  }
+  return '1h'
+}
+
+function mapTwelveInterval(timeframe?: string): string {
+  const normalized = normalizeTimeframe(timeframe)
+  if (normalized === '15m') return '15min'
+  if (normalized === '1h') return '1h'
+  if (normalized === '4h') return '4h'
   return '1day'
 }
 
-function mapYahooInterval(assetType: string): { interval: string; period: string } {
-  if (assetType === 'crypto') {
+function mapYahooInterval(timeframe?: string): { interval: string; period: string } {
+  const normalized = normalizeTimeframe(timeframe)
+  if (normalized === '15m') {
+    return { interval: '15m', period: '5d' }
+  }
+  if (normalized === '1h') {
     return { interval: '1h', period: '2mo' }
+  }
+  if (normalized === '4h') {
+    return { interval: '1h', period: '6mo' }
   }
   return { interval: '1d', period: '6mo' }
 }
@@ -309,13 +327,14 @@ async function fetchYahooQuote(ticker: string, reasons?: string[]): Promise<Unif
 
 async function fetchTwelveDataHistory(
   symbol: string,
-  assetType: string,
+  _assetType: string,
+  timeframe?: string,
   reasons?: string[]
 ): Promise<UnifiedHistory | null> {
   if (!TWELVE_DATA_API_KEY) return null
 
   try {
-    const interval = mapTwelveInterval(assetType)
+    const interval = mapTwelveInterval(timeframe)
     const url =
       `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}` +
       `&interval=${interval}&outputsize=120&apikey=${TWELVE_DATA_API_KEY}`
@@ -372,10 +391,11 @@ async function fetchTwelveDataHistory(
 
 async function fetchYahooHistory(
   ticker: string,
-  assetType: string,
+  _assetType: string,
+  timeframe?: string,
   reasons?: string[]
 ): Promise<UnifiedHistory | null> {
-  const { interval, period } = mapYahooInterval(assetType)
+  const { interval, period } = mapYahooInterval(timeframe)
   const result = await fetchYahooChart(ticker, interval, period, reasons)
   if (!result) return null
 
@@ -491,7 +511,8 @@ export async function getCryptoQuote(symbol: string): Promise<UnifiedQuote | nul
 
 export async function getHistoricalCandles(
   symbol: string,
-  assetType: string
+  assetType: string,
+  timeframe?: string
 ): Promise<UnifiedHistory | null> {
   const normalizedAssetType = assetType.toLowerCase()
   const normalizedSymbol = symbol.toUpperCase()
@@ -501,8 +522,8 @@ export async function getHistoricalCandles(
     const twelveSymbol = normalizeForex(normalizedSymbol)
     const yahooSymbol = toYahooForexTicker(normalizedSymbol)
     const history =
-      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType, reasons)) ||
-      (await fetchYahooHistory(yahooSymbol, normalizedAssetType, reasons))
+      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType, timeframe, reasons)) ||
+      (await fetchYahooHistory(yahooSymbol, normalizedAssetType, timeframe, reasons))
 
     if (!history) {
       recordLiveFailure('forex-history', symbol, reasons)
@@ -515,8 +536,8 @@ export async function getHistoricalCandles(
     const twelveSymbol = normalizeCrypto(normalizedSymbol)
     const yahooSymbol = toYahooCryptoTicker(normalizedSymbol)
     const history =
-      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType, reasons)) ||
-      (await fetchYahooHistory(yahooSymbol, normalizedAssetType, reasons))
+      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType, timeframe, reasons)) ||
+      (await fetchYahooHistory(yahooSymbol, normalizedAssetType, timeframe, reasons))
 
     if (!history) {
       recordLiveFailure('crypto-history', symbol, reasons)
@@ -530,8 +551,8 @@ export async function getHistoricalCandles(
     const twelveSymbol = COMMODITY_TWELVE_SYMBOL_MAP[clean] || clean
     const yahooSymbol = COMMODITY_YAHOO_SYMBOL_MAP[clean] || clean
     const history =
-      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType, reasons)) ||
-      (await fetchYahooHistory(yahooSymbol, normalizedAssetType, reasons))
+      (await fetchTwelveDataHistory(twelveSymbol, normalizedAssetType, timeframe, reasons)) ||
+      (await fetchYahooHistory(yahooSymbol, normalizedAssetType, timeframe, reasons))
 
     if (!history) {
       recordLiveFailure('commodities-history', symbol, reasons)
@@ -545,8 +566,8 @@ export async function getHistoricalCandles(
     const twelveSymbol = INDEX_TWELVE_SYMBOL_MAP[clean] || clean
     const yahooSymbol = INDEX_YAHOO_SYMBOL_MAP[clean] || clean
     const history =
-      (await fetchTwelveDataHistory(twelveSymbol, 'indices', reasons)) ||
-      (await fetchYahooHistory(yahooSymbol, 'indices', reasons))
+      (await fetchTwelveDataHistory(twelveSymbol, 'indices', timeframe, reasons)) ||
+      (await fetchYahooHistory(yahooSymbol, 'indices', timeframe, reasons))
 
     if (!history) {
       recordLiveFailure('indices-history', symbol, reasons)
@@ -556,8 +577,8 @@ export async function getHistoricalCandles(
   }
 
   const history =
-    (await fetchTwelveDataHistory(normalizedSymbol, normalizedAssetType, reasons)) ||
-    (await fetchYahooHistory(normalizedSymbol, normalizedAssetType, reasons))
+    (await fetchTwelveDataHistory(normalizedSymbol, normalizedAssetType, timeframe, reasons)) ||
+    (await fetchYahooHistory(normalizedSymbol, normalizedAssetType, timeframe, reasons))
 
   if (!history) {
     recordLiveFailure(`${normalizedAssetType}-history`, symbol, reasons)
