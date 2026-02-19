@@ -121,6 +121,7 @@ export default function TrendsPage() {
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<string>('')
+  const [signalFilter, setSignalFilter] = useState<'ALL' | 'BUY' | 'SELL' | 'WAIT'>('ALL')
   const [liveFailures, setLiveFailures] = useState<LiveFailureEntry[]>([])
   const [deploymentInfo, setDeploymentInfo] = useState<DeploymentInfo | null>(null)
 
@@ -409,18 +410,6 @@ export default function TrendsPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Show all assets without filters
-  const displayedAssets = assets.map(asset => ({
-    ...asset,
-    tradability: calculateTradability(asset),
-    confidenceTier:
-      asset.technicals.confidence >= 75
-        ? 'HIGH'
-        : asset.technicals.confidence >= 60
-          ? 'MEDIUM'
-          : 'LOW',
-  }))
-
   function calculateTradability(asset: AssetTrend): number {
     // Combines: confidence (40%), signal strength (30%), trend reliability (30%)
     const signalScore =
@@ -526,9 +515,220 @@ export default function TrendsPage() {
 
   const activeDebrief = debriefByHorizon[debriefHorizon]
 
+  // Compute market stats for overview
+  const buyAssets = assets.filter(a => a.technicals.signal === 'BUY')
+  const sellAssets = assets.filter(a => a.technicals.signal === 'SELL')
+  const waitAssets = assets.filter(a => a.technicals.signal === 'WAIT')
+  const topMovers = [...assets]
+    .sort((a, b) => Math.abs(b.changePercent24h) - Math.abs(a.changePercent24h))
+    .slice(0, 4)
+  const topConfidence = [...assets]
+    .sort((a, b) => b.technicals.confidence - a.technicals.confidence)
+    .slice(0, 3)
+
+  // Show all assets without filters
+  const displayedAssets = assets.map(asset => ({
+    ...asset,
+    tradability: calculateTradability(asset),
+    confidenceTier:
+      asset.technicals.confidence >= 75
+        ? 'HIGH'
+        : asset.technicals.confidence >= 60
+          ? 'MEDIUM'
+          : 'LOW',
+  }))
+
+  const filteredAssets =
+    signalFilter === 'ALL'
+      ? displayedAssets
+      : displayedAssets.filter(a => a.technicals.signal === signalFilter)
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pt-24">
       <div className="max-w-7xl mx-auto px-4">
+        {/* Market Overview Section */}
+        <div className="mb-6 rounded-xl border border-slate-700 bg-gradient-to-r from-slate-900/80 to-slate-850/60 p-5">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
+                Live Market Overview
+              </h1>
+              <p className="text-sm text-slate-300">
+                Real-time analysis across {assets.length} assets | Updated {lastUpdate}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Link
+                href="/guides/tradingview"
+                className="px-3 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-xs text-slate-300 hover:bg-slate-600 transition-colors"
+              >
+                📊 TV Guide
+              </Link>
+              <Link
+                href="/learning-path"
+                className="px-3 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-xs text-indigo-300 hover:bg-indigo-500/30 transition-colors"
+              >
+                📚 Learning Path
+              </Link>
+            </div>
+          </div>
+
+          {/* Market Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+              <div className="text-emerald-300 text-xs font-semibold mb-1">BUY Signals</div>
+              <div className="text-2xl font-bold text-emerald-400">{buyAssets.length}</div>
+              <div className="text-[11px] text-slate-400">
+                {buyAssets.length > 0
+                  ? `${((buyAssets.length / assets.length) * 100).toFixed(0)}% of market`
+                  : 'None active'}
+              </div>
+            </div>
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+              <div className="text-red-300 text-xs font-semibold mb-1">SELL Signals</div>
+              <div className="text-2xl font-bold text-red-400">{sellAssets.length}</div>
+              <div className="text-[11px] text-slate-400">
+                {sellAssets.length > 0
+                  ? `${((sellAssets.length / assets.length) * 100).toFixed(0)}% of market`
+                  : 'None active'}
+              </div>
+            </div>
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+              <div className="text-amber-300 text-xs font-semibold mb-1">WAIT (Neutral)</div>
+              <div className="text-2xl font-bold text-amber-400">{waitAssets.length}</div>
+              <div className="text-[11px] text-slate-400">
+                {waitAssets.length > 0
+                  ? `${((waitAssets.length / assets.length) * 100).toFixed(0)}% of market`
+                  : 'None active'}
+              </div>
+            </div>
+            <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3">
+              <div className="text-cyan-300 text-xs font-semibold mb-1">Market Status</div>
+              <div className="text-lg font-bold text-cyan-400">
+                {buyAssets.length > sellAssets.length
+                  ? '📈 Bullish'
+                  : sellAssets.length > buyAssets.length
+                    ? '📉 Bearish'
+                    : '↔️ Sideways'}
+              </div>
+              <div className="text-[11px] text-slate-400">Sentiment bias</div>
+            </div>
+          </div>
+
+          {/* Signal Filter Controls */}
+          <div className="mb-4">
+            <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
+              Filter by Signal
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {(['ALL', 'BUY', 'SELL', 'WAIT'] as const).map(signal => (
+                <button
+                  key={signal}
+                  onClick={() => setSignalFilter(signal)}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    signalFilter === signal
+                      ? signal === 'BUY'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                        : signal === 'SELL'
+                          ? 'bg-red-500/20 text-red-300 border-red-500/50'
+                          : signal === 'WAIT'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                            : 'bg-slate-600 text-slate-100 border-slate-500'
+                      : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
+                  }`}
+                >
+                  {signal}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Top Movers & Confidence */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
+                🔥 Top Movers (24h Volatility)
+              </div>
+              <div className="space-y-2">
+                {topMovers.map((asset, idx) => (
+                  <div
+                    key={asset.symbol}
+                    className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-200">{asset.symbol}</div>
+                        <div className="text-[11px] text-slate-500">{asset.name}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div
+                        className={`text-sm font-bold ${
+                          asset.changePercent24h >= 0 ? 'text-emerald-400' : 'text-red-400'
+                        }`}
+                      >
+                        {asset.changePercent24h >= 0 ? '+' : ''}
+                        {asset.changePercent24h.toFixed(2)}%
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        ${asset.currentPrice.toFixed(4)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
+                ⭐ Highest Confidence
+              </div>
+              <div className="space-y-2">
+                {topConfidence.map((asset, idx) => (
+                  <div
+                    key={asset.symbol}
+                    className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-200">{asset.symbol}</div>
+                        <div className="text-[11px] text-slate-500">{asset.technicals.signal}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-purple-400">
+                        {asset.technicals.confidence}%
+                      </div>
+                      <div className="text-[11px] text-slate-400">confidence</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-slate-700 text-[11px] text-slate-400 flex gap-2 flex-wrap">
+            <Link href="/doctrine" className="text-indigo-300 hover:text-indigo-200 font-semibold">
+              📖 Trading Doctrine
+            </Link>
+            <span>•</span>
+            <Link
+              href="/guides/deriv"
+              className="text-indigo-300 hover:text-indigo-200 font-semibold"
+            >
+              🎯 Deriv Guide
+            </Link>
+            <span>•</span>
+            <Link
+              href="/courses/trading-psychology"
+              className="text-indigo-300 hover:text-indigo-200 font-semibold"
+            >
+              🧠 Psychology Course
+            </Link>
+          </div>
+        </div>
+
         <div className="mb-4 p-3 rounded-xl border border-slate-700 bg-slate-900/70 text-slate-200 text-xs flex flex-wrap gap-3 items-center">
           <span className="font-semibold text-emerald-300">Live Build</span>
           <span>
@@ -704,7 +904,7 @@ export default function TrendsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8 mt-4">
           <AnimatePresence>
-            {displayedAssets.map((asset, idx) => (
+            {filteredAssets.map((asset, idx) => (
               <motion.div
                 key={asset.symbol}
                 initial={{ opacity: 0, y: 20 }}
