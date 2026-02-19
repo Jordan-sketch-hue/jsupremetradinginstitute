@@ -1,4 +1,4 @@
-ï»¿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -712,14 +712,14 @@ export default function TrendsPage() {
             <Link href="/doctrine" className="text-indigo-300 hover:text-indigo-200 font-semibold">
               ?? Trading Doctrine
             </Link>
-            <span>â€¢</span>
+            <span>•</span>
             <Link
               href="/guides/deriv"
               className="text-indigo-300 hover:text-indigo-200 font-semibold"
             >
               ?? Deriv Guide
             </Link>
-            <span>â€¢</span>
+            <span>•</span>
             <Link
               href="/courses/trading-psychology"
               className="text-indigo-300 hover:text-indigo-200 font-semibold"
@@ -774,7 +774,7 @@ export default function TrendsPage() {
               </p>
             </div>
             <div className="text-xs text-slate-300">
-              Refreshed with live feed â€¢ {new Date().toLocaleDateString()}
+              Refreshed with live feed • {new Date().toLocaleDateString()}
             </div>
           </div>
 
@@ -810,7 +810,7 @@ export default function TrendsPage() {
                       #{index + 1} {item.name}
                     </div>
                     <div className="text-xs text-slate-400">
-                      {item.symbol} â€¢ {item.type.toUpperCase()}
+                      {item.symbol} • {item.type.toUpperCase()}
                     </div>
                   </div>
                   <div className="text-right">
@@ -839,7 +839,7 @@ export default function TrendsPage() {
                 <div className="text-xs text-slate-300 mb-1">{item.outlook}</div>
                 <div className="text-xs text-slate-400">{item.focus}</div>
                 <div className="mt-2 text-[11px] text-slate-500">
-                  Confidence {item.confidence}% â€¢ Tradability {item.tradability}%
+                  Confidence {item.confidence}% • Tradability {item.tradability}%
                 </div>
               </div>
             ))}
@@ -855,6 +855,45 @@ export default function TrendsPage() {
             >
               Full debrief page
             </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8 mt-4">
+          <AnimatePresence>
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-xs text-emerald-300 font-semibold mb-1">1) HTF Bias</div>
+              <div className="text-xs text-slate-300">
+                Start from 1W/1D to mark accumulation/distribution zones before taking
+                lower-timeframe entries.
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-xs text-violet-300 font-semibold mb-1">
+                2) Manipulation Check
+              </div>
+              <div className="text-xs text-slate-300">
+                Wait for liquidity sweep + reclaim confirmation around key order block areas.
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-xs text-amber-300 font-semibold mb-1">3) Risk Discipline</div>
+              <div className="text-xs text-slate-300">
+                Risk fixed size per trade, avoid adding risk after invalidation, and respect stop
+                placement.
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-xs text-cyan-300 font-semibold mb-1">4) Review Loop</div>
+              <div className="text-xs text-slate-300">
+                Journal entries, outcomes, and missed setups daily to improve execution quality.
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-xs text-slate-200">
+            <span className="font-semibold text-indigo-300">Today’s focus:</span> Select 1-3
+            top-ranked debrief assets, confirm higher-timeframe bias first, then execute only when
+            lower-timeframe confirmation aligns with your risk model.
           </div>
         </div>
 
