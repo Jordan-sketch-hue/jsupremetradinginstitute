@@ -1,4 +1,35 @@
 /**
+ * Fetch RSI directly from Twelve Data's RSI endpoint.
+ * Returns the latest RSI value or null if unavailable.
+ */
+export async function fetchTwelveDataRSI(
+  symbol: string,
+  interval: string = '1h',
+  period: number = 14
+): Promise<number | null> {
+  const apiKey = process.env.TWELVE_DATA_API_KEY || ''
+  if (!apiKey) return null
+  let twelveSymbol = symbol
+  // Normalize symbol for forex and crypto
+  if (/^[A-Z]{6,}$/.test(symbol)) {
+    if (symbol.endsWith('USD')) twelveSymbol = symbol.slice(0, 3) + '/' + symbol.slice(3)
+  }
+  const url = `https://api.twelvedata.com/rsi?symbol=${encodeURIComponent(twelveSymbol)}&interval=${interval}&time_period=${period}&apikey=${apiKey}`
+  try {
+    const response = await fetch(url, { cache: 'no-store' })
+    if (!response.ok) return null
+    const data = await response.json()
+    if (data?.status === 'error' || !Array.isArray(data?.values) || data.values.length === 0)
+      return null
+    // Get the most recent RSI value
+    const latest = data.values[0]?.rsi
+    const rsi = typeof latest === 'string' ? parseFloat(latest) : latest
+    return Number.isFinite(rsi) ? rsi : null
+  } catch {
+    return null
+  }
+}
+/**
  * Fetch historical closes for a symbol using Twelve Data as the primary source, with Yahoo as backend fallback only.
  * Returns array of closing prices (most recent last) or null if unavailable.
  *

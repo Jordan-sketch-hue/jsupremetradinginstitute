@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCryptoQuote } from '@/lib/marketDataProvider'
+import { getCryptoQuote, fetchTwelveDataRSI } from '@/lib/marketDataProvider'
 
 interface CryptoPrice {
   symbol: string
@@ -8,6 +8,7 @@ interface CryptoPrice {
   volume24h: number
   change24h: number
   changePercent24h: number
+  rsi: number | null
   timestamp: string
   dataSource: 'LIVE'
 }
@@ -31,6 +32,8 @@ async function fetchCryptoData(symbols: string[]): Promise<CryptoPrice[]> {
 
     let priceData: CryptoPrice | null = null
     if (quote) {
+      // Fetch RSI from Twelve Data
+      const rsi = await fetchTwelveDataRSI(symbol, '1h', 14)
       priceData = {
         symbol,
         price: quote.price,
@@ -38,6 +41,7 @@ async function fetchCryptoData(symbols: string[]): Promise<CryptoPrice[]> {
         volume24h: 0,
         change24h: quote.change,
         changePercent24h: quote.changePercent,
+        rsi,
         timestamp: new Date().toISOString(),
         dataSource: 'LIVE',
       }

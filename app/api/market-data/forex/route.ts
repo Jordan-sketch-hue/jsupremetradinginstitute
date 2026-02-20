@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getForexQuote } from '@/lib/marketDataProvider'
+import { getForexQuote, fetchTwelveDataRSI } from '@/lib/marketDataProvider'
 
 interface ForexPrice {
   symbol: string
   bid: number
   ask: number
+  rsi: number | null
   timestamp: string
   change: number
   changePercent: number
@@ -31,10 +32,13 @@ async function fetchForexData(symbols: string[]): Promise<ForexPrice[]> {
 
     let priceData: ForexPrice | null = null
     if (quote) {
+      // Fetch RSI from Twelve Data
+      const rsi = await fetchTwelveDataRSI(symbol, '1h', 14)
       priceData = {
         symbol,
         bid: quote.price * 0.9999,
         ask: quote.price * 1.0001,
+        rsi,
         timestamp: new Date().toISOString(),
         change: quote.change,
         changePercent: quote.changePercent,
