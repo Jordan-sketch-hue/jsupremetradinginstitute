@@ -1,3 +1,6 @@
+// This API route provides historical candles for all asset types.
+// All frontend code must use this endpoint for historical data (never fetch Yahoo/Twelve Data directly from the browser).
+// Yahoo fallback is only used server-side to avoid CORS issues.
 import { NextRequest, NextResponse } from 'next/server'
 import { getHistoricalCandles } from '@/lib/marketDataProvider'
 

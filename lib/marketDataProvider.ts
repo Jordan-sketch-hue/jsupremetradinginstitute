@@ -1,13 +1,16 @@
 /**
- * Fetch historical closes for a symbol using both Yahoo and Twelve Data as fallback.
+ * Fetch historical closes for a symbol using Twelve Data as the primary source, with Yahoo as backend fallback only.
  * Returns array of closing prices (most recent last) or null if unavailable.
+ *
+ * NOTE: All frontend code must fetch historical data via the backend API (e.g. /api/market-data/historical), never directly from Yahoo or Twelve Data.
+ * Yahoo fallback is only used server-side to avoid CORS issues.
  */
 export async function getHistoricalCloses(
   symbol: string,
   assetType: string = 'forex',
   timeframe: string = '1h'
 ): Promise<number[] | null> {
-  // Try both providers for best coverage
+  // Always use Twelve Data first, Yahoo only as backend fallback
   const history = await (
     await import('./marketDataProvider')
   ).getHistoricalCandles(symbol, assetType, timeframe)
@@ -598,6 +601,10 @@ export async function getCryptoQuote(symbol: string): Promise<UnifiedQuote | nul
   return quote
 }
 
+/**
+ * Fetch historical candles for a symbol using Twelve Data as the primary source, with Yahoo as backend fallback only.
+ * This function is only called server-side. All frontend code must use backend API endpoints.
+ */
 export async function getHistoricalCandles(
   symbol: string,
   assetType: string,
@@ -607,6 +614,7 @@ export async function getHistoricalCandles(
   const normalizedSymbol = symbol.toUpperCase()
   const reasons: string[] = []
 
+  // Always use Twelve Data first, Yahoo only as backend fallback
   if (normalizedAssetType === 'forex') {
     const twelveSymbol = normalizeForex(normalizedSymbol)
     const yahooSymbol = toYahooForexTicker(normalizedSymbol)
@@ -665,6 +673,7 @@ export async function getHistoricalCandles(
     return history
   }
 
+  // Default: try Twelve Data, then Yahoo as backend fallback
   const history =
     (await fetchTwelveDataHistory(normalizedSymbol, normalizedAssetType, timeframe, reasons)) ||
     (await fetchYahooHistory(normalizedSymbol, normalizedAssetType, timeframe, reasons))
