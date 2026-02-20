@@ -277,21 +277,22 @@ export default function TrendsPage() {
 
         let assetsList: (AssetTrend | null)[] = await Promise.all(
           ASSETS_CONFIG.map(async config => {
-            let data: AssetTrend | null = null;
-            let closes: number[] | null = null;
-            let rsiValue: number = 50;
+            let data: AssetTrend | null = null
+            let closes: number[] | null = null
+            let rsiValue: number = 50
             try {
-              closes = await getHistoricalCloses(config.symbol, config.type, '1h');
+              closes = await getHistoricalCloses(config.symbol, config.type, '1h')
               if (closes && closes.length > 0) {
-                rsiValue = Math.round(calculateRSI(closes));
+                rsiValue = Math.round(calculateRSI(closes))
               }
             } catch (err) {
               // fallback to 50
             }
 
             if (config.type === 'crypto' && cryptoData[config.symbol]) {
-              const crypto = cryptoData[config.symbol];
-              const signal = crypto.changePercent24h > 2 ? 'BUY' : crypto.changePercent24h < -2 ? 'SELL' : 'WAIT';
+              const crypto = cryptoData[config.symbol]
+              const signal =
+                crypto.changePercent24h > 2 ? 'BUY' : crypto.changePercent24h < -2 ? 'SELL' : 'WAIT'
               data = {
                 symbol: config.symbol,
                 name: config.name,
@@ -315,10 +316,15 @@ export default function TrendsPage() {
                 takeProfitTargets: buildTakeProfitTargets(crypto.price, config.type, signal),
                 reasoning: `Live pricing from Twelve Data (Yahoo fallback) | Updated every 30 seconds`,
                 lastUpdate: new Date().toISOString(),
-              };
+              }
             } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
-              const commodity = commoditiesData[config.symbol];
-              const signal = commodity.changePercent > 0.5 ? 'BUY' : commodity.changePercent < -0.5 ? 'SELL' : 'WAIT';
+              const commodity = commoditiesData[config.symbol]
+              const signal =
+                commodity.changePercent > 0.5
+                  ? 'BUY'
+                  : commodity.changePercent < -0.5
+                    ? 'SELL'
+                    : 'WAIT'
               data = {
                 symbol: config.symbol,
                 name: config.name,
@@ -347,10 +353,25 @@ export default function TrendsPage() {
                 takeProfitTargets: buildTakeProfitTargets(commodity.price, config.type, signal),
                 reasoning: `Live commodity pricing from Twelve Data (Yahoo fallback) | Market data`,
                 lastUpdate: new Date().toISOString(),
-              };
-      try {
-        // ...existing code for error/asset update logic...
-        console.error('Error fetching market data:', error)
+              }
+            }
+            // TODO: Add other asset types (forex, indices) as needed
+            return data
+          })
+        )
+        setAssets(assetsList.filter(Boolean) as AssetTrend[])
+        setLoading(false)
+        const updateTime = new Date().toLocaleTimeString()
+        setLastUpdate(updateTime)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(
+            cacheKey,
+            JSON.stringify({ assets: assetsList.filter(Boolean), lastUpdate: updateTime })
+          )
+        }
+      } catch (fetchError) {
+        // Error handling for fetchMarketData
+        console.error('Error fetching market data:', fetchError)
         setAssets([])
         const updateTime = new Date().toLocaleTimeString()
         setLastUpdate(updateTime)
@@ -362,14 +383,13 @@ export default function TrendsPage() {
           )
         }
       } finally {
-
         setIsRefreshing(false)
       }
     }
     fetchMarketData()
-    const interval = setInterval(fetchMarketData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    const interval = setInterval(fetchMarketData, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   function calculateTradability(asset: AssetTrend): number {
     // Combines: confidence (40%), signal strength (30%), trend reliability (30%)
@@ -429,12 +449,12 @@ export default function TrendsPage() {
         const macroTrend = asset.technicals.trend === 'SIDEWAYS' ? 55 : 95
         return Math.round(asset.technicals.confidence * 0.45 + stability * 0.35 + macroTrend * 0.2)
       },
-    };
+    }
 
     return assetList
       .map(asset => {
-        const tradability = calculateTradability(asset as AssetTrend);
-        const score = scoreByHorizon[horizon](asset as AssetTrend, tradability);
+        const tradability = calculateTradability(asset as AssetTrend)
+        const score = scoreByHorizon[horizon](asset as AssetTrend, tradability)
         return {
           ...asset,
           score,
@@ -444,10 +464,10 @@ export default function TrendsPage() {
           focus: '',
           confidence: (asset as AssetTrend).technicals.confidence,
           tradability,
-        };
+        }
       })
       .sort((left, right) => right.score - left.score)
-      .slice(0, 6);
+      .slice(0, 6)
   }
 
   const debriefByHorizon = {
