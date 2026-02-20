@@ -422,21 +422,21 @@ export default function TrendsPage() {
                 reasoning: `Live index data from Twelve Data (Yahoo fallback) | Real market pricing`,
                 lastUpdate: new Date().toISOString(),
               }
-        try {
-          console.error('Error fetching market data:', error)
-          setAssets([])
-          const updateTime = new Date().toLocaleTimeString()
-          setLastUpdate(updateTime)
-          setLoading(false)
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem(
-              cacheKey,
-              JSON.stringify({ assets: [], lastUpdate: updateTime })
-            )
-          }
-        } finally {
-          setIsRefreshing(false)
+      try {
+        // ...existing code for error/asset update logic...
+        console.error('Error fetching market data:', error)
+        setAssets([])
+        const updateTime = new Date().toLocaleTimeString()
+        setLastUpdate(updateTime)
+        setLoading(false)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(
+            cacheKey,
+            JSON.stringify({ assets: [], lastUpdate: updateTime })
+          )
         }
+      } finally {
+        setIsRefreshing(false)
       }
     }
 
