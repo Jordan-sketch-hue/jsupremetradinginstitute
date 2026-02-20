@@ -285,9 +285,12 @@ export default function TrendsPage() {
             let analysisError: string | null = null
             try {
               closes = await getHistoricalCloses(config.symbol, config.type, '1h')
-              if (closes && closes.length > 0) {
-                atrValue = calculateATR(closes)
-              }
+              // ATR calculation requires full candles (high, low, close), not just closes
+              // If only closes are available, skip ATR calculation
+              // TODO: Fetch full candle data for ATR in the future
+              // if (candles && candles.length > 0) {
+              //   atrValue = calculateATR(candles)
+              // }
               // Fetch volume from Twelve Data (if available)
               const volume = await getLatestVolume(config.symbol, config.type, '1h')
               if (typeof volume === 'number' && Number.isFinite(volume)) {
