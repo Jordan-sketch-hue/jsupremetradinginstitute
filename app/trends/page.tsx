@@ -6,6 +6,12 @@ import { ChevronDown, GraduationCap, Tv } from 'lucide-react'
 import Link from 'next/link'
 import { TechnicalIndicators, calculateRSI } from '@/lib/technicalAnalysis'
 import { getHistoricalCloses } from '@/lib/marketDataProvider'
+
+// TEMP: Manually input TradingView RSI for EURUSD 1h for comparison (in real use, fetch via admin or API)
+const TRADINGVIEW_RSI: Record<string, number> = {
+  EURUSD: 45,
+  // Add more symbols as needed
+}
 import AssetDetailModal from '@/components/AssetDetailModal'
 import TrendsNavigation from '@/components/TrendsNavigation'
 import TradeConfirmationDialog from '@/components/TradeConfirmationDialog'
@@ -275,11 +281,29 @@ export default function TrendsPage() {
             let closes: number[] | null = null
             try {
               closes = await getHistoricalCloses(config.symbol, config.type, '1h')
-            } catch {}
+              if (closes && closes.length > 0) {
+                const rsiValue = Math.round(calculateRSI(closes))
+                // Diagnostic log for RSI debugging
+                // eslint-disable-next-line no-console
+                console.log(
+                  `RSI DIAG: ${config.symbol} closes:`,
+                  closes.slice(-20),
+                  'RSI:',
+                  rsiValue
+                )
+              } else {
+                // eslint-disable-next-line no-console
+                console.warn(`RSI DIAG: ${config.symbol} has insufficient closes for RSI!`)
+              }
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error(`RSI DIAG: Error fetching closes for ${config.symbol}:`, err)
+            }
 
             if (config.type === 'crypto' && cryptoData[config.symbol]) {
               const crypto = cryptoData[config.symbol]
-              const signal = crypto.changePercent24h > 2 ? 'BUY' : crypto.changePercent24h < -2 ? 'SELL' : 'WAIT'
+              const signal =
+                crypto.changePercent24h > 2 ? 'BUY' : crypto.changePercent24h < -2 ? 'SELL' : 'WAIT'
               data = {
                 symbol: config.symbol,
                 name: config.name,
@@ -306,7 +330,8 @@ export default function TrendsPage() {
               }
             } else if (config.type === 'forex' && forexData[config.symbol]) {
               const forex = forexData[config.symbol]
-              const signal = forex.changePercent > 0.2 ? 'BUY' : forex.changePercent < -0.2 ? 'SELL' : 'WAIT'
+              const signal =
+                forex.changePercent > 0.2 ? 'BUY' : forex.changePercent < -0.2 ? 'SELL' : 'WAIT'
               data = {
                 symbol: config.symbol,
                 name: config.name,
@@ -333,7 +358,8 @@ export default function TrendsPage() {
               }
             } else if (config.type === 'indices' && indicesData[config.symbol]) {
               const index = indicesData[config.symbol]
-              const signal = index.changePercent > 0.8 ? 'BUY' : index.changePercent < -0.8 ? 'SELL' : 'WAIT'
+              const signal =
+                index.changePercent > 0.8 ? 'BUY' : index.changePercent < -0.8 ? 'SELL' : 'WAIT'
               data = {
                 symbol: config.symbol,
                 name: config.name,
@@ -365,7 +391,12 @@ export default function TrendsPage() {
               }
             } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
               const commodity = commoditiesData[config.symbol]
-              const signal = commodity.changePercent > 0.5 ? 'BUY' : commodity.changePercent < -0.5 ? 'SELL' : 'WAIT'
+              const signal =
+                commodity.changePercent > 0.5
+                  ? 'BUY'
+                  : commodity.changePercent < -0.5
+                    ? 'SELL'
+                    : 'WAIT'
               data = {
                 symbol: config.symbol,
                 name: config.name,
@@ -398,8 +429,7 @@ export default function TrendsPage() {
             }
             return data
           })
-        )
-        .filter((asset): asset is AssetTrend => asset !== null)
+        ).filter((asset): asset is AssetTrend => asset !== null)
 
         assetsList.sort((a, b) => {
           // Priority: BUY > SELL > WAIT, then by confidence
@@ -775,7 +805,20 @@ export default function TrendsPage() {
                 <div className="grid grid-cols-2 gap-2 text-xs mb-4">
                   <div className="bg-slate-700/50 p-2 rounded">
                     <div className="text-slate-400">RSI</div>
-                    <div className="text-white font-bold">{asset.technicals.rsi}</div>
+                    <div className="text-white font-bold">
+                      {asset.technicals.rsi}
+                      {TRADINGVIEW_RSI[asset.symbol] !== undefined && (
+                        <span className="ml-2 text-xs text-amber-400 font-mono">
+                          (TV: {TRADINGVIEW_RSI[asset.symbol]})
+                        </span>
+                      )}
+                    </div>
+                    {TRADINGVIEW_RSI[asset.symbol] !== undefined &&
+                      Math.abs(asset.technicals.rsi - TRADINGVIEW_RSI[asset.symbol]) > 2 && (
+                        <div className="text-xs text-red-500 font-semibold mt-1">
+                          Warning: RSI differs from TradingView by more than ±2
+                        </div>
+                      )}
                   </div>
                   <div className="bg-slate-700/50 p-2 rounded">
                     <div className="text-slate-400">Trend</div>
