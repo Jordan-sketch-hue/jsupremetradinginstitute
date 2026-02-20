@@ -12,9 +12,13 @@ const TRADINGVIEW_RSI: Record<string, number> = {
   EURUSD: 45,
   // Add more symbols as needed
 }
+
 import AssetDetailModal from '@/components/AssetDetailModal'
 import TrendsNavigation from '@/components/TrendsNavigation'
 import TradeConfirmationDialog from '@/components/TradeConfirmationDialog'
+import { QuantumMatrix } from '@/components/QuantumMatrix'
+import { QuantumTicker } from '@/components/QuantumTicker'
+import { TrendsDashboard } from '@/components/TrendsDashboard'
 
 interface AssetTrend {
   symbol: string
@@ -32,6 +36,7 @@ interface AssetTrend {
   reasoning: string
   lastUpdate: string
   dataSource?: 'LIVE'
+  closes?: number[]
 }
 
 interface LiveFailureEntry {
@@ -68,6 +73,7 @@ interface DebriefAsset {
 type DisplayedAsset = AssetTrend & {
   tradability: number
   confidenceTier: 'HIGH' | 'MEDIUM' | 'LOW'
+  closes?: number[]
 }
 
 const DEBRIEF_HORIZONS: Array<{
@@ -349,8 +355,7 @@ export default function TrendsPage() {
                 takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
                 reasoning: `Live pricing from Twelve Data | Updated every 30 seconds`,
                 lastUpdate: new Date().toISOString(),
-                // orderBlocks, // Removed to match AssetTrend type
-                // analysisError, // Removed to match AssetTrend type
+                closes: closes ?? [],
               }
             } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
               const commodity = commoditiesData[config.symbol]
@@ -395,6 +400,7 @@ export default function TrendsPage() {
                 takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
                 reasoning: `Live commodity pricing from Twelve Data | Market data`,
                 lastUpdate: new Date().toISOString(),
+                closes: closes ?? [],
               }
             } else if (config.type === 'forex' && forexData[config.symbol]) {
               const forex = forexData[config.symbol]
@@ -441,6 +447,7 @@ export default function TrendsPage() {
                 takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
                 reasoning: `Live forex pricing from Twelve Data | Market data`,
                 lastUpdate: new Date().toISOString(),
+                closes: closes ?? [],
               }
             } else if (config.type === 'indices' && indicesData[config.symbol]) {
               const index = indicesData[config.symbol]
@@ -483,6 +490,7 @@ export default function TrendsPage() {
                 takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
                 reasoning: `Live index pricing from Twelve Data | Market data`,
                 lastUpdate: new Date().toISOString(),
+                closes: closes ?? [],
               }
             }
             // If no data, return undefined
@@ -1093,22 +1101,43 @@ export default function TrendsPage() {
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-slate-200">{asset.symbol}</div>
-                          <div className="text-[11px] text-slate-500">{asset.name}</div>
+                        {/* Quantum Matrix Hero Visual */}
+                        <div className="mb-8">
+                          <QuantumMatrix rows={10} cols={36} />
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-sm font-bold ${
-                            asset.changePercent24h >= 0 ? 'text-emerald-400' : 'text-red-400'
-                          }`}
-                        >
-                          {asset.changePercent24h >= 0 ? '+' : ''}
-                          {asset.changePercent24h.toFixed(2)}%
+
+                        {/* Quantum Ticker Row */}
+                        <div className="flex flex-wrap gap-3 mb-8">
+                          {topTrades.slice(0, 6).map(asset => (
+                            <QuantumTicker
+                              key={asset.symbol}
+                              symbol={asset.symbol}
+                              price={asset.currentPrice}
+                              change={asset.change24h}
+                            />
+                          ))}
                         </div>
-                        <div className="text-[11px] text-slate-400">
-                          ${asset.currentPrice.toFixed(4)}
+
+                        {/* Modern Trends Dashboard: Top Trade Opportunities */}
+                        <div className="mt-6">
+                          <TrendsDashboard
+                            assets={topTrades.map(asset => ({
+                              symbol: asset.symbol,
+                              name: asset.name,
+                              price: asset.currentPrice,
+                              change: asset.change24h,
+                              changePercent: asset.changePercent24h,
+                              rsi: asset.technicals.rsi,
+                              trend: asset.technicals.trend,
+                              macdSignal: asset.technicals.macdSignal,
+                              confidence: asset.technicals.confidence,
+                              chartData: (asset.closes || []).map((v: number, i: number) => ({
+                                time: String(i),
+                                value: v,
+                              })),
+                              category: asset.type,
+                            }))}
+                          />
                         </div>
                       </div>
                     </div>
@@ -1321,7 +1350,7 @@ export default function TrendsPage() {
                 trend: asset.technicals.trend,
                 macdSignal: asset.technicals.macdSignal,
                 confidence: asset.technicals.confidence,
-                chartData: (asset.priceHistory || []).map((v: any, i: number) => ({
+                chartData: (asset.closes || []).map((v: number, i: number) => ({
                   time: String(i),
                   value: v,
                 })),
@@ -1361,7 +1390,7 @@ export default function TrendsPage() {
                 trend: asset.technicals.trend,
                 macdSignal: asset.technicals.macdSignal,
                 confidence: asset.technicals.confidence,
-                chartData: (asset.priceHistory || []).map((v: any, i: number) => ({
+                chartData: (asset.closes || []).map((v: number, i: number) => ({
                   time: String(i),
                   value: v,
                 })),
