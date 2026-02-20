@@ -436,8 +436,10 @@ export default function TrendsPage() {
           )
         }
       } finally {
+
         setIsRefreshing(false)
       }
+    }
 
     fetchMarketData()
     const interval = setInterval(fetchMarketData, 30000)
