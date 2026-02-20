@@ -1322,10 +1322,7 @@ export default function TrendsPage() {
                 trend: asset.technicals.trend,
                 macdSignal: asset.technicals.macdSignal,
                 confidence: asset.technicals.confidence,
-                chartData: (asset.priceHistory || []).map((v: any, i: number) => ({
-                  time: String(i),
-                  value: v,
-                })),
+                chartData: [],
                 category: asset.type,
               }))}
             />
@@ -1362,10 +1359,7 @@ export default function TrendsPage() {
                 trend: asset.technicals.trend,
                 macdSignal: asset.technicals.macdSignal,
                 confidence: asset.technicals.confidence,
-                chartData: (asset.priceHistory || []).map((v: any, i: number) => ({
-                  time: String(i),
-                  value: v,
-                })),
+                chartData: [],
                 category: asset.type,
               }))}
             />
