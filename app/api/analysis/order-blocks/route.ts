@@ -30,32 +30,14 @@ export async function GET(request: NextRequest) {
 
         const { candles } = await histResponse.json()
         if (!candles || !Array.isArray(candles) || candles.length === 0) {
-          // Always return proxy zones if no candles
-          const rangePct = assetType === 'forex' ? 0.002 : assetType === 'crypto' ? 0.01 : 0.004
           return NextResponse.json({
-            orderBlocks: [
-              {
-                type: 'BULLISH',
-                priceLevel: currentPrice,
-                range: { high: currentPrice * (1 + rangePct), low: currentPrice * (1 - rangePct) },
-                strength: 50,
-                timestamp: Date.now(),
-                description: 'Proxy bullish zone (no candles)',
-              },
-              {
-                type: 'BEARISH',
-                priceLevel: currentPrice,
-                range: { high: currentPrice * (1 + rangePct), low: currentPrice * (1 - rangePct) },
-                strength: 50,
-                timestamp: Date.now(),
-                description: 'Proxy bearish zone (no candles)',
-              },
-            ],
+            orderBlocks: [],
+            error: 'No live candle data available',
             obConfidence: 0,
             nearestOB: null,
             candlesCount: 0,
             provider: 'LIVE',
-          })
+          }, { status: 500 })
         }
 
         // Detect order blocks
@@ -64,26 +46,16 @@ export async function GET(request: NextRequest) {
         // Find support/resistance
         const { support, resistance } = findLevels(candles)
 
-        // If no order blocks detected, create proxy zones from support/resistance
+        // If no order blocks detected, return empty array
         if (orderBlocks.length === 0) {
-          const rangePct = assetType === 'forex' ? 0.002 : assetType === 'crypto' ? 0.01 : 0.004
-          const supportBlocks = support.map(level => ({
-            type: 'BULLISH' as const,
-            priceLevel: level,
-            range: { high: level * (1 + rangePct), low: level * (1 - rangePct) },
-            strength: 55,
-            timestamp: Date.now(),
-            description: `Proxy bullish zone at ${level.toFixed(4)} (support-derived)`,
-          }))
-          const resistanceBlocks = resistance.map(level => ({
-            type: 'BEARISH' as const,
-            priceLevel: level,
-            range: { high: level * (1 + rangePct), low: level * (1 - rangePct) },
-            strength: 55,
-            timestamp: Date.now(),
-            description: `Proxy bearish zone at ${level.toFixed(4)} (resistance-derived)`,
-          }))
-          orderBlocks = [...supportBlocks, ...resistanceBlocks]
+          return NextResponse.json({
+            orderBlocks: [],
+            error: 'No live order blocks detected',
+            obConfidence: 0,
+            nearestOB: null,
+            candlesCount: candles.length,
+            provider: 'LIVE',
+          }, { status: 500 })
         }
 
         // Score the setup
