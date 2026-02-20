@@ -277,16 +277,41 @@ export default function TrendsPage() {
 
         let assetsList: (AssetTrend | undefined)[] = await Promise.all(
           ASSETS_CONFIG.map(async config => {
-            let data: AssetTrend | null = null
-            let closes: number[] | null = null
-            let rsiValue: number = 50
+            let data: AssetTrend | null = null;
+            let closes: number[] | null = null;
+            let atrValue: number = 0;
+            let volumeValue: number = 0;
+            let orderBlocks: any[] = [];
+            let analysisError: string | null = null;
             try {
-              closes = await getHistoricalCloses(config.symbol, config.type, '1h')
+              closes = await getHistoricalCloses(config.symbol, config.type, '1h');
               if (closes && closes.length > 0) {
-                rsiValue = Math.round(calculateRSI(closes))
+                atrValue = calculateATR(closes);
+              }
+              // Fetch volume from Twelve Data (if available)
+              const volume = await getLatestVolume(config.symbol, config.type, '1h');
+              if (typeof volume === 'number' && Number.isFinite(volume)) {
+                volumeValue = volume;
+              }
+              // Fetch order block analysis
+              const obUrl = `/api/analysis/order-blocks?symbol=${config.symbol}&type=${config.type}&price=${cryptoData[config.symbol]?.price ?? forexData[config.symbol]?.bid ?? indicesData[config.symbol]?.price ?? commoditiesData[config.symbol]?.price ?? 0}&timeframe=1h`;
+              let obResponse = await fetch(obUrl);
+              if (obResponse.ok) {
+                const obPayload = await obResponse.json();
+                orderBlocks = obPayload.orderBlocks || [];
+              } else {
+                analysisError = 'Order block analysis failed';
+                // Retry once with 4h timeframe
+                const obUrlRetry = `/api/analysis/order-blocks?symbol=${config.symbol}&type=${config.type}&price=${cryptoData[config.symbol]?.price ?? forexData[config.symbol]?.bid ?? indicesData[config.symbol]?.price ?? commoditiesData[config.symbol]?.price ?? 0}&timeframe=4h`;
+                obResponse = await fetch(obUrlRetry);
+                if (obResponse.ok) {
+                  const obPayload = await obResponse.json();
+                  orderBlocks = obPayload.orderBlocks || [];
+                  analysisError = null;
+                }
               }
             } catch (err) {
-              // fallback to 50
+              analysisError = 'Order block analysis error';
             }
 
             if (config.type === 'crypto' && cryptoData[config.symbol]) {
@@ -304,7 +329,8 @@ export default function TrendsPage() {
                 changePercent24h: crypto.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  rsi: rsiValue,
+                  atr: atrValue,
+                  volume: volumeValue,
                   macdSignal: (crypto.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: crypto.change24h ?? 0,
                   trend: (crypto.changePercent24h ?? 0) > 0 ? 'UP' : 'DOWN',
@@ -318,6 +344,8 @@ export default function TrendsPage() {
                 takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
                 reasoning: `Live pricing from Twelve Data | Updated every 30 seconds`,
                 lastUpdate: new Date().toISOString(),
+                orderBlocks,
+                analysisError,
               }
             } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
               const commodity = commoditiesData[config.symbol]
@@ -340,7 +368,8 @@ export default function TrendsPage() {
                 changePercent24h: commodity.changePercent ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  rsi: rsiValue,
+                  atr: atrValue,
+                  volume: volumeValue,
                   macdSignal: (commodity.changePercent ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: commodity.change ?? 0,
                   trend:
@@ -383,7 +412,8 @@ export default function TrendsPage() {
                 changePercent24h: forex.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  rsi: rsiValue,
+                  atr: atrValue,
+                  volume: volumeValue,
                   macdSignal: (forex.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: forex.change ?? 0,
                   trend:
@@ -422,7 +452,8 @@ export default function TrendsPage() {
                 changePercent24h: index.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  rsi: rsiValue,
+                  atr: atrValue,
+                  volume: volumeValue,
                   macdSignal: (index.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: index.change ?? 0,
                   trend:
