@@ -833,28 +833,25 @@ export default function TrendsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs mb-4">
-                  <div className="bg-slate-700/50 p-2 rounded">
-                    <div className="text-slate-400">RSI</div>
-                    <div className="text-white font-bold">
-                      {asset.technicals.rsi}
-                      {TRADINGVIEW_RSI[asset.symbol] !== undefined && (
-                        <span className="ml-2 text-xs text-amber-400 font-mono">
-                          (TV: {TRADINGVIEW_RSI[asset.symbol]})
-                        </span>
-                      )}
-                    </div>
-                    {asset.technicals.rsi === 50 && (
-                      <div className="text-xs text-yellow-400 font-semibold mt-1">
-                        Warning: RSI is 50 (no historical data available)
+                  {asset.technicals.rsi !== 50 && asset.technicals.rsi !== undefined && (
+                    <div className="bg-slate-700/50 p-2 rounded">
+                      <div className="text-slate-400">RSI</div>
+                      <div className="text-white font-bold">
+                        {asset.technicals.rsi}
+                        {TRADINGVIEW_RSI[asset.symbol] !== undefined && (
+                          <span className="ml-2 text-xs text-amber-400 font-mono">
+                            (TV: {TRADINGVIEW_RSI[asset.symbol]})
+                          </span>
+                        )}
                       </div>
-                    )}
-                    {TRADINGVIEW_RSI[asset.symbol] !== undefined &&
-                      Math.abs(asset.technicals.rsi - TRADINGVIEW_RSI[asset.symbol]) > 2 && (
-                        <div className="text-xs text-red-500 font-semibold mt-1">
-                          Warning: RSI differs from TradingView by more than ±2
-                        </div>
-                      )}
-                  </div>
+                      {TRADINGVIEW_RSI[asset.symbol] !== undefined &&
+                        Math.abs(asset.technicals.rsi - TRADINGVIEW_RSI[asset.symbol]) > 2 && (
+                          <div className="text-xs text-red-500 font-semibold mt-1">
+                            Warning: RSI differs from TradingView by more than ±2
+                          </div>
+                        )}
+                    </div>
+                  )}
                   <div className="bg-slate-700/50 p-2 rounded">
                     <div className="text-slate-400">Trend</div>
                     <div className="text-white font-bold">{asset.technicals.trend}</div>
