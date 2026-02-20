@@ -467,7 +467,6 @@ export default function TrendsPage() {
         }
       })
       .sort((left, right) => right.score - left.score)
-      .slice(0, 6)
   }
 
   const debriefByHorizon = {
@@ -490,7 +489,12 @@ export default function TrendsPage() {
     .sort((a, b) => b.technicals.confidence - a.technicals.confidence)
     .slice(0, 3)
 
-  // Show all assets without filters
+  // Category filter state
+  const [categoryFilter, setCategoryFilter] = useState<
+    'ALL' | 'forex' | 'crypto' | 'indices' | 'commodities'
+  >('ALL')
+
+  // Show all assets with tradability/confidence tier
   const displayedAssets: DisplayedAsset[] = assets.map(asset => ({
     ...asset,
     tradability: calculateTradability(asset),
@@ -502,15 +506,22 @@ export default function TrendsPage() {
           : 'LOW',
   }))
 
-  const filteredAssets: DisplayedAsset[] =
-    signalFilter === 'ALL'
-      ? displayedAssets
-      : displayedAssets.filter(a => a.technicals.signal === signalFilter)
+  // Apply category and signal filters
+  const filteredAssets: DisplayedAsset[] = displayedAssets.filter(
+    a =>
+      (categoryFilter === 'ALL' || a.type === categoryFilter) &&
+      (signalFilter === 'ALL' || a.technicals.signal === signalFilter)
+  )
 
-  // Instead of splitting by category, show all assets sorted by confidence
+  // All assets sorted by confidence
   const allSortedAssets = [...filteredAssets].sort(
     (a, b) => b.technicals.confidence - a.technicals.confidence
   )
+
+  // Top trades for the day (top 6 by confidence)
+  const topTrades = [...displayedAssets]
+    .sort((a, b) => b.technicals.confidence - a.technicals.confidence)
+    .slice(0, 6)
 
   const parseNumber = (value: string): number => parseFloat(value.replace(/[^\d.]/g, '')) || 0
 
@@ -1159,11 +1170,33 @@ export default function TrendsPage() {
             </div>
           )}
 
-          {sectionFilter !== 'debrief' && (
-            <div id="signals" className="mt-6">
-              {renderAssetSection('all', 'Top Trade Opportunities', allSortedAssets)}
-            </div>
-          )}
+          {/* Top Trades for the Day */}
+          <div className="mt-6">
+            {renderAssetSection('top', 'Top Trade Opportunities', topTrades)}
+          </div>
+
+          {/* Category and Signal Filters */}
+          <div className="mb-4 flex flex-wrap gap-2">
+            <div className="text-xs text-slate-400 font-semibold mr-2">Category:</div>
+            {(['ALL', 'forex', 'crypto', 'indices', 'commodities'] as const).map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                  categoryFilter === cat
+                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
+                    : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
+                }`}
+              >
+                {cat.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* All assets sorted by confidence, with filters applied */}
+          <div className="mt-6">
+            {renderAssetSection('all', 'All Assets (Sorted by Confidence)', allSortedAssets)}
+          </div>
 
           <AnimatePresence>
             {selectedAsset && (
