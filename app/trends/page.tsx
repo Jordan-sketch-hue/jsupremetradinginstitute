@@ -275,7 +275,7 @@ export default function TrendsPage() {
           if (item?.symbol) commoditiesData[item.symbol] = item
         })
 
-        const assetsList = await Promise.all(
+        let assetsList: (AssetTrend | null)[] = await Promise.all(
           ASSETS_CONFIG.map(async config => {
             let data: AssetTrend | null = null
             let closes: number[] | null = null
@@ -429,9 +429,12 @@ export default function TrendsPage() {
             }
             return data
           })
-        ).filter((asset): asset is AssetTrend => asset !== null)
+        )
 
-        assetsList.sort((a, b) => {
+        const filteredAssetsList: AssetTrend[] = assetsList.filter(
+          (asset: AssetTrend | null): asset is AssetTrend => asset !== null
+        )
+        filteredAssetsList.sort((a, b) => {
           // Priority: BUY > SELL > WAIT, then by confidence
           const signalOrder = { BUY: 0, SELL: 1, WAIT: 2 }
           const signalDiff =
@@ -442,14 +445,14 @@ export default function TrendsPage() {
           return b.technicals.confidence - a.technicals.confidence
         })
 
-        setAssets(assetsList)
+        setAssets(filteredAssetsList)
         const updateTime = new Date().toLocaleTimeString()
         setLastUpdate(updateTime)
         setLoading(false)
         if (typeof window !== 'undefined') {
           window.localStorage.setItem(
             cacheKey,
-            JSON.stringify({ assets: assetsList, lastUpdate: updateTime })
+            JSON.stringify({ assets: filteredAssetsList, lastUpdate: updateTime })
           )
         }
       } catch (error) {
@@ -607,10 +610,10 @@ export default function TrendsPage() {
       ? displayedAssets
       : displayedAssets.filter(a => a.technicals.signal === signalFilter)
 
-  const forexAssets = filteredAssets.filter(asset => asset.type === 'forex')
-  const cryptoAssets = filteredAssets.filter(asset => asset.type === 'crypto')
-  const indicesAssets = filteredAssets.filter(asset => asset.type === 'indices')
-  const commoditiesAssets = filteredAssets.filter(asset => asset.type === 'commodities')
+  // Instead of splitting by category, show all assets sorted by confidence
+  const allSortedAssets = [...filteredAssets].sort(
+    (a, b) => b.technicals.confidence - a.technicals.confidence
+  )
 
   const parseNumber = (value: string): number => parseFloat(value.replace(/[^\d.]/g, '')) || 0
 
@@ -1256,10 +1259,7 @@ export default function TrendsPage() {
 
           {sectionFilter !== 'debrief' && (
             <div id="signals" className="mt-6">
-              {renderAssetSection('forex', 'Forex Pairs', forexAssets)}
-              {renderAssetSection('crypto', 'Crypto', cryptoAssets)}
-              {renderAssetSection('indices', 'Indices', indicesAssets)}
-              {renderAssetSection('commodities', 'Commodities', commoditiesAssets)}
+              {renderAssetSection('all', 'Top Trade Opportunities', allSortedAssets)}
             </div>
           )}
 

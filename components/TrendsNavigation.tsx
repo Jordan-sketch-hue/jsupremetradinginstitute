@@ -9,7 +9,7 @@ import {
   Briefcase,
   CandlestickChart,
   ChevronDown,
-  CircleAlert,
+  AlertCircle,
   Globe2,
   LineChart,
   Zap,
@@ -69,7 +69,7 @@ const TRENDS_SECTIONS: TrendsSection[] = [
     id: 'failures',
     label: 'Analysis Failures',
     category: 'forex',
-    icon: <CircleAlert className="h-4 w-4" />,
+    icon: <AlertCircle className="h-4 w-4" />,
   },
   {
     id: 'dashboard',
