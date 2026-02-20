@@ -275,7 +275,7 @@ export default function TrendsPage() {
           if (item?.symbol) commoditiesData[item.symbol] = item
         })
 
-        let assetsList: (AssetTrend | null)[] = await Promise.all(
+        let assetsList: (AssetTrend | undefined)[] = await Promise.all(
           ASSETS_CONFIG.map(async config => {
             let data: AssetTrend | null = null
             let closes: number[] | null = null
@@ -289,133 +289,165 @@ export default function TrendsPage() {
               // fallback to 50
             }
 
-            // CRYPTO
             if (config.type === 'crypto' && cryptoData[config.symbol]) {
-              // CRYPTO
-              if (config.type === 'crypto' && cryptoData[config.symbol]) {
-                const crypto = cryptoData[config.symbol];
-                const price = typeof crypto.price === 'number' && Number.isFinite(crypto.price) ? crypto.price : 0;
-                const signal = crypto.changePercent24h > 2 ? 'BUY' : crypto.changePercent24h < -2 ? 'SELL' : 'WAIT';
-                data = {
-                  symbol: config.symbol,
-                  name: config.name,
-                  type: config.type,
-                  currentPrice: price,
-                  change24h: crypto.change24h ?? 0,
-                  changePercent24h: crypto.changePercent24h ?? 0,
-                  dataSource: 'LIVE',
-                  technicals: {
-                    rsi: rsiValue,
-                    macdSignal: (crypto.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
-                    momentum: crypto.change24h ?? 0,
-                    trend: (crypto.changePercent24h ?? 0) > 0 ? 'UP' : 'DOWN',
-                    signal,
-                    confidence: Math.floor(Math.abs(crypto.changePercent24h ?? 0) * 20 + 50),
-                  },
-                  keyLevel: price * 0.99,
-                  entryZone: `${(price * 0.98).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
-                  stopLoss: `${(price * 0.95).toFixed(2)}`,
-                  takeProfit: `${(price * 1.08).toFixed(2)}`,
-                  takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
-                  reasoning: `Live pricing from Twelve Data (Yahoo fallback) | Updated every 30 seconds`,
-                  lastUpdate: new Date().toISOString(),
-                };
+              const crypto = cryptoData[config.symbol]
+              const price =
+                typeof crypto.price === 'number' && Number.isFinite(crypto.price) ? crypto.price : 0
+              const signal =
+                crypto.changePercent24h > 2 ? 'BUY' : crypto.changePercent24h < -2 ? 'SELL' : 'WAIT'
+              data = {
+                symbol: config.symbol,
+                name: config.name,
+                type: config.type,
+                currentPrice: price,
+                change24h: crypto.change24h ?? 0,
+                changePercent24h: crypto.changePercent24h ?? 0,
+                dataSource: 'LIVE',
+                technicals: {
+                  rsi: rsiValue,
+                  macdSignal: (crypto.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
+                  momentum: crypto.change24h ?? 0,
+                  trend: (crypto.changePercent24h ?? 0) > 0 ? 'UP' : 'DOWN',
+                  signal,
+                  confidence: Math.floor(Math.abs(crypto.changePercent24h ?? 0) * 20 + 50),
+                },
+                keyLevel: price * 0.99,
+                entryZone: `${(price * 0.98).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
+                stopLoss: `${(price * 0.95).toFixed(2)}`,
+                takeProfit: `${(price * 1.08).toFixed(2)}`,
+                takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
+                reasoning: `Live pricing from Twelve Data | Updated every 30 seconds`,
+                lastUpdate: new Date().toISOString(),
               }
-              // COMMODITIES
-              else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
-                const commodity = commoditiesData[config.symbol];
-                const price = typeof commodity.price === 'number' && Number.isFinite(commodity.price) ? commodity.price : 0;
-                const signal = (commodity.changePercent ?? 0) > 0.5 ? 'BUY' : (commodity.changePercent ?? 0) < -0.5 ? 'SELL' : 'WAIT';
-                data = {
-                  symbol: config.symbol,
-                  name: config.name,
-                  type: config.type,
-                  currentPrice: price,
-                  change24h: commodity.change ?? 0,
-                  changePercent24h: commodity.changePercent ?? 0,
-                  dataSource: 'LIVE',
-                  technicals: {
-                    rsi: rsiValue,
-                    macdSignal: (commodity.changePercent ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
-                    momentum: commodity.change ?? 0,
-                    trend: (commodity.changePercent ?? 0) > 0.3 ? 'UP' : (commodity.changePercent ?? 0) < -0.3 ? 'DOWN' : 'SIDEWAYS',
-                    signal,
-                    confidence: Math.floor(Math.abs(commodity.changePercent ?? 0) * 25 + 55),
-                  },
-                  keyLevel: price * 0.98,
-                  entryZone: `${(price * 0.97).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
-                  stopLoss: `${(price * 0.93).toFixed(2)}`,
-                  takeProfit: `${(price * 1.08).toFixed(2)}`,
-                  takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
-                  reasoning: `Live commodity pricing from Twelve Data (Yahoo fallback) | Market data`,
-                  lastUpdate: new Date().toISOString(),
-                };
+            } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
+              const commodity = commoditiesData[config.symbol]
+              const price =
+                typeof commodity.price === 'number' && Number.isFinite(commodity.price)
+                  ? commodity.price
+                  : 0
+              const signal =
+                (commodity.changePercent ?? 0) > 0.5
+                  ? 'BUY'
+                  : (commodity.changePercent ?? 0) < -0.5
+                    ? 'SELL'
+                    : 'WAIT'
+              data = {
+                symbol: config.symbol,
+                name: config.name,
+                type: config.type,
+                currentPrice: price,
+                change24h: commodity.change ?? 0,
+                changePercent24h: commodity.changePercent ?? 0,
+                dataSource: 'LIVE',
+                technicals: {
+                  rsi: rsiValue,
+                  macdSignal: (commodity.changePercent ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
+                  momentum: commodity.change ?? 0,
+                  trend:
+                    (commodity.changePercent ?? 0) > 0.3
+                      ? 'UP'
+                      : (commodity.changePercent ?? 0) < -0.3
+                        ? 'DOWN'
+                        : 'SIDEWAYS',
+                  signal,
+                  confidence: Math.floor(Math.abs(commodity.changePercent ?? 0) * 25 + 55),
+                },
+                keyLevel: price * 0.98,
+                entryZone: `${(price * 0.97).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
+                stopLoss: `${(price * 0.93).toFixed(2)}`,
+                takeProfit: `${(price * 1.08).toFixed(2)}`,
+                takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
+                reasoning: `Live commodity pricing from Twelve Data | Market data`,
+                lastUpdate: new Date().toISOString(),
               }
-              // FOREX
-              else if (config.type === 'forex' && forexData[config.symbol]) {
-                const forex = forexData[config.symbol];
-                const price = typeof forex.bid === 'number' && Number.isFinite(forex.bid) ? forex.bid : (typeof forex.ask === 'number' && Number.isFinite(forex.ask) ? forex.ask : 0);
-                const signal = (forex.changePercent24h ?? 0) > 0.2 ? 'BUY' : (forex.changePercent24h ?? 0) < -0.2 ? 'SELL' : 'WAIT';
-                data = {
-                  symbol: config.symbol,
-                  name: config.name,
-                  type: config.type,
-                  currentPrice: price,
-                  change24h: forex.change ?? 0,
-                  changePercent24h: forex.changePercent24h ?? 0,
-                  dataSource: 'LIVE',
-                  technicals: {
-                    rsi: rsiValue,
-                    macdSignal: (forex.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
-                    momentum: forex.change ?? 0,
-                    trend: (forex.changePercent24h ?? 0) > 0 ? 'UP' : (forex.changePercent24h ?? 0) < 0 ? 'DOWN' : 'SIDEWAYS',
-                    signal,
-                    confidence: Math.floor(Math.abs(forex.changePercent24h ?? 0) * 100 + 50),
-                  },
-                  keyLevel: price * 0.99,
-                  entryZone: `${(price * 0.98).toFixed(5)} - ${(price * 1.02).toFixed(5)}`,
-                  stopLoss: `${(price * 0.95).toFixed(5)}`,
-                  takeProfit: `${(price * 1.08).toFixed(5)}`,
-                  takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
-                  reasoning: `Live forex pricing from Twelve Data (Yahoo fallback) | Market data`,
-                  lastUpdate: new Date().toISOString(),
-                };
+            } else if (config.type === 'forex' && forexData[config.symbol]) {
+              const forex = forexData[config.symbol]
+              const price =
+                typeof forex.bid === 'number' && Number.isFinite(forex.bid)
+                  ? forex.bid
+                  : typeof forex.ask === 'number' && Number.isFinite(forex.ask)
+                    ? forex.ask
+                    : 0
+              const signal =
+                (forex.changePercent24h ?? 0) > 0.2
+                  ? 'BUY'
+                  : (forex.changePercent24h ?? 0) < -0.2
+                    ? 'SELL'
+                    : 'WAIT'
+              data = {
+                symbol: config.symbol,
+                name: config.name,
+                type: config.type,
+                currentPrice: price,
+                change24h: forex.change ?? 0,
+                changePercent24h: forex.changePercent24h ?? 0,
+                dataSource: 'LIVE',
+                technicals: {
+                  rsi: rsiValue,
+                  macdSignal: (forex.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
+                  momentum: forex.change ?? 0,
+                  trend:
+                    (forex.changePercent24h ?? 0) > 0
+                      ? 'UP'
+                      : (forex.changePercent24h ?? 0) < 0
+                        ? 'DOWN'
+                        : 'SIDEWAYS',
+                  signal,
+                  confidence: Math.floor(Math.abs(forex.changePercent24h ?? 0) * 100 + 50),
+                },
+                keyLevel: price * 0.99,
+                entryZone: `${(price * 0.98).toFixed(5)} - ${(price * 1.02).toFixed(5)}`,
+                stopLoss: `${(price * 0.95).toFixed(5)}`,
+                takeProfit: `${(price * 1.08).toFixed(5)}`,
+                takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
+                reasoning: `Live forex pricing from Twelve Data | Market data`,
+                lastUpdate: new Date().toISOString(),
               }
-              // INDICES
-              else if (config.type === 'indices' && indicesData[config.symbol]) {
-                const index = indicesData[config.symbol];
-                const price = typeof index.price === 'number' && Number.isFinite(index.price) ? index.price : 0;
-                const signal = (index.changePercent24h ?? 0) > 0.2 ? 'BUY' : (index.changePercent24h ?? 0) < -0.2 ? 'SELL' : 'WAIT';
-                data = {
-                  symbol: config.symbol,
-                  name: config.name,
-                  type: config.type,
-                  currentPrice: price,
-                  change24h: index.change ?? 0,
-                  changePercent24h: index.changePercent24h ?? 0,
-                  dataSource: 'LIVE',
-                  technicals: {
-                    rsi: rsiValue,
-                    macdSignal: (index.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
-                    momentum: index.change ?? 0,
-                    trend: (index.changePercent24h ?? 0) > 0 ? 'UP' : (index.changePercent24h ?? 0) < 0 ? 'DOWN' : 'SIDEWAYS',
-                    signal,
-                    confidence: Math.floor(Math.abs(index.changePercent24h ?? 0) * 100 + 50),
-                  },
-                  keyLevel: price * 0.99,
-                  entryZone: `${(price * 0.98).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
-                  stopLoss: `${(price * 0.95).toFixed(2)}`,
-                  takeProfit: `${(price * 1.08).toFixed(2)}`,
-                  takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
-                  reasoning: `Live index pricing from Twelve Data (Yahoo fallback) | Market data`,
-                  lastUpdate: new Date().toISOString(),
-                };
+            } else if (config.type === 'indices' && indicesData[config.symbol]) {
+              const index = indicesData[config.symbol]
+              const price =
+                typeof index.price === 'number' && Number.isFinite(index.price) ? index.price : 0
+              const signal =
+                (index.changePercent24h ?? 0) > 0.2
+                  ? 'BUY'
+                  : (index.changePercent24h ?? 0) < -0.2
+                    ? 'SELL'
+                    : 'WAIT'
+              data = {
+                symbol: config.symbol,
+                name: config.name,
+                type: config.type,
+                currentPrice: price,
+                change24h: index.change ?? 0,
+                changePercent24h: index.changePercent24h ?? 0,
+                dataSource: 'LIVE',
+                technicals: {
+                  rsi: rsiValue,
+                  macdSignal: (index.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
+                  momentum: index.change ?? 0,
+                  trend:
+                    (index.changePercent24h ?? 0) > 0
+                      ? 'UP'
+                      : (index.changePercent24h ?? 0) < 0
+                        ? 'DOWN'
+                        : 'SIDEWAYS',
+                  signal,
+                  confidence: Math.floor(Math.abs(index.changePercent24h ?? 0) * 100 + 50),
+                },
+                keyLevel: price * 0.99,
+                entryZone: `${(price * 0.98).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
+                stopLoss: `${(price * 0.95).toFixed(2)}`,
+                takeProfit: `${(price * 1.08).toFixed(2)}`,
+                takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
+                reasoning: `Live index pricing from Twelve Data | Market data`,
+                lastUpdate: new Date().toISOString(),
               }
-            // If no data, return null
-            return data
+            }
+            // If no data, return undefined
+            return data ?? undefined
           })
         )
-        setAssets(assetsList.filter(Boolean) as AssetTrend[])
+        setAssets(assetsList.filter((a): a is AssetTrend => !!a))
         setLoading(false)
         const updateTime = new Date().toLocaleTimeString()
         setLastUpdate(updateTime)
