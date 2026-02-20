@@ -346,14 +346,6 @@ export default function TrendsPage() {
                     reasoning: `Live pricing from Twelve Data (Yahoo fallback) | Updated every 30 seconds`,
                     lastUpdate: new Date().toISOString(),
                   }
-                  // ...existing code...
-                    index.changePercent > 0.5
-                      ? 'UP'
-                      : index.changePercent < -0.5
-                        ? 'DOWN'
-                        : 'SIDEWAYS',
-                  signal,
-                  confidence: Math.floor(Math.abs(index.changePercent) * 20 + 50),
                 },
                 keyLevel: index.price * 0.99,
                 entryZone: `${(index.price * 0.998).toFixed(2)} - ${(index.price * 1.002).toFixed(2)}`,
