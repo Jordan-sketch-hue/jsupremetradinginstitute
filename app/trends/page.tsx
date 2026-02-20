@@ -189,7 +189,7 @@ export default function TrendsPage() {
 
     const formatPrice = (price: number, type: AssetTrend['type']) => {
       const decimals = type === 'forex' ? 5 : type === 'crypto' ? 2 : 2
-      return price.toFixed(decimals)
+      return typeof price === 'number' ? price.toFixed(decimals) : '--'
     }
 
     const buildTakeProfitTargets = (
@@ -277,41 +277,41 @@ export default function TrendsPage() {
 
         let assetsList: (AssetTrend | undefined)[] = await Promise.all(
           ASSETS_CONFIG.map(async config => {
-            let data: AssetTrend | null = null;
-            let closes: number[] | null = null;
-            let atrValue: number = 0;
-            let volumeValue: number = 0;
-            let orderBlocks: any[] = [];
-            let analysisError: string | null = null;
+            let data: AssetTrend | null = null
+            let closes: number[] | null = null
+            let atrValue: number = 0
+            let volumeValue: number = 0
+            let orderBlocks: any[] = []
+            let analysisError: string | null = null
             try {
-              closes = await getHistoricalCloses(config.symbol, config.type, '1h');
+              closes = await getHistoricalCloses(config.symbol, config.type, '1h')
               if (closes && closes.length > 0) {
-                atrValue = calculateATR(closes);
+                atrValue = calculateATR(closes)
               }
               // Fetch volume from Twelve Data (if available)
-              const volume = await getLatestVolume(config.symbol, config.type, '1h');
+              const volume = await getLatestVolume(config.symbol, config.type, '1h')
               if (typeof volume === 'number' && Number.isFinite(volume)) {
-                volumeValue = volume;
+                volumeValue = volume
               }
               // Fetch order block analysis
-              const obUrl = `/api/analysis/order-blocks?symbol=${config.symbol}&type=${config.type}&price=${cryptoData[config.symbol]?.price ?? forexData[config.symbol]?.bid ?? indicesData[config.symbol]?.price ?? commoditiesData[config.symbol]?.price ?? 0}&timeframe=1h`;
-              let obResponse = await fetch(obUrl);
+              const obUrl = `/api/analysis/order-blocks?symbol=${config.symbol}&type=${config.type}&price=${cryptoData[config.symbol]?.price ?? forexData[config.symbol]?.bid ?? indicesData[config.symbol]?.price ?? commoditiesData[config.symbol]?.price ?? 0}&timeframe=1h`
+              let obResponse = await fetch(obUrl)
               if (obResponse.ok) {
-                const obPayload = await obResponse.json();
-                orderBlocks = obPayload.orderBlocks || [];
+                const obPayload = await obResponse.json()
+                orderBlocks = obPayload.orderBlocks || []
               } else {
-                analysisError = 'Order block analysis failed';
+                analysisError = 'Order block analysis failed'
                 // Retry once with 4h timeframe
-                const obUrlRetry = `/api/analysis/order-blocks?symbol=${config.symbol}&type=${config.type}&price=${cryptoData[config.symbol]?.price ?? forexData[config.symbol]?.bid ?? indicesData[config.symbol]?.price ?? commoditiesData[config.symbol]?.price ?? 0}&timeframe=4h`;
-                obResponse = await fetch(obUrlRetry);
+                const obUrlRetry = `/api/analysis/order-blocks?symbol=${config.symbol}&type=${config.type}&price=${cryptoData[config.symbol]?.price ?? forexData[config.symbol]?.bid ?? indicesData[config.symbol]?.price ?? commoditiesData[config.symbol]?.price ?? 0}&timeframe=4h`
+                obResponse = await fetch(obUrlRetry)
                 if (obResponse.ok) {
-                  const obPayload = await obResponse.json();
-                  orderBlocks = obPayload.orderBlocks || [];
-                  analysisError = null;
+                  const obPayload = await obResponse.json()
+                  orderBlocks = obPayload.orderBlocks || []
+                  analysisError = null
                 }
               }
             } catch (err) {
-              analysisError = 'Order block analysis error';
+              analysisError = 'Order block analysis error'
             }
 
             if (config.type === 'crypto' && cryptoData[config.symbol]) {
@@ -574,11 +574,9 @@ export default function TrendsPage() {
       .map(asset => {
         const tradability = calculateTradability(asset as AssetTrend)
         const score = scoreByHorizon[horizon](asset as AssetTrend, tradability)
-        return (
-          <div className="min-h-screen bg-slate-950 text-white">
-            {/* Sticky nav bar: add margin for desktop sticky nav */}
-            <TrendsNavigation onNavigate={handleSectionNavigate} activeSection={activeSection} />
-            <div className="max-w-7xl mx-auto px-2 md:px-4 pt-4 md:pt-24">
+        return {
+          ...asset,
+          score,
           outlook: '',
           focus: '',
           confidence: (asset as AssetTrend).technicals.confidence,
@@ -789,15 +787,23 @@ export default function TrendsPage() {
 
                 <div className="mb-2">
                   <div className="text-xl font-bold text-white">
-                    ${asset.currentPrice.toFixed(4)}
+                    {typeof asset.currentPrice === 'number'
+                      ? `$${asset.currentPrice.toFixed(4)}`
+                      : '--'}
                   </div>
                   <div
                     className={`text-xs font-medium ${
-                      asset.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'
+                      typeof asset.change24h === 'number' && asset.change24h >= 0
+                        ? 'text-emerald-400'
+                        : 'text-red-400'
                     }`}
                   >
-                    {asset.change24h >= 0 ? '+' : ''}
-                    {asset.change24h.toFixed(4)} ({asset.changePercent24h.toFixed(2)}%)
+                    {typeof asset.change24h === 'number' && asset.change24h >= 0 ? '+' : ''}
+                    {typeof asset.change24h === 'number' ? asset.change24h.toFixed(4) : '--'} (
+                    {typeof asset.changePercent24h === 'number'
+                      ? asset.changePercent24h.toFixed(2)
+                      : '--'}
+                    %)
                   </div>
                 </div>
 
