@@ -411,39 +411,6 @@ export default function TrendsPage() {
                   lastUpdate: new Date().toISOString(),
                 };
               }
-                  : index.changePercent24h < -0.2
-                    ? 'SELL'
-                    : 'WAIT'
-              data = {
-                symbol: config.symbol,
-                name: config.name,
-                type: config.type,
-                currentPrice: index.price,
-                change24h: index.change,
-                changePercent24h: index.changePercent24h,
-                dataSource: 'LIVE',
-                technicals: {
-                  rsi: rsiValue,
-                  macdSignal: index.changePercent24h > 0 ? 'BULLISH' : 'BEARISH',
-                  momentum: index.change,
-                  trend:
-                    index.changePercent24h > 0
-                      ? 'UP'
-                      : index.changePercent24h < 0
-                        ? 'DOWN'
-                        : 'SIDEWAYS',
-                  signal,
-                  confidence: Math.floor(Math.abs(index.changePercent24h) * 100 + 50),
-                },
-                keyLevel: index.price * 0.99,
-                entryZone: `${(index.price * 0.98).toFixed(2)} - ${(index.price * 1.02).toFixed(2)}`,
-                stopLoss: `${(index.price * 0.95).toFixed(2)}`,
-                takeProfit: `${(index.price * 1.08).toFixed(2)}`,
-                takeProfitTargets: buildTakeProfitTargets(index.price, config.type, signal),
-                reasoning: `Live index pricing from Twelve Data (Yahoo fallback) | Market data`,
-                lastUpdate: new Date().toISOString(),
-              }
-            }
             // If no data, return null
             return data
           })
