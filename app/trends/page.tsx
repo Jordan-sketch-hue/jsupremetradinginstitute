@@ -429,42 +429,25 @@ export default function TrendsPage() {
         const macroTrend = asset.technicals.trend === 'SIDEWAYS' ? 55 : 95
         return Math.round(asset.technicals.confidence * 0.45 + stability * 0.35 + macroTrend * 0.2)
       },
-    }
+    };
 
     return assetList
-              data = {
-                symbol: config.symbol,
-                name: config.name,
-                type: config.type,
-                currentPrice: commodity.price,
-                change24h: commodity.change,
-                changePercent24h: commodity.changePercent,
-                dataSource: 'LIVE',
-                technicals: {
-                  rsi: rsiValue,
-                  macdSignal: commodity.changePercent > 0 ? 'BULLISH' : 'BEARISH',
-                  momentum: commodity.change,
-                  trend:
-                    commodity.changePercent > 0.3
-                      ? 'UP'
-                      : commodity.changePercent < -0.3
-                        ? 'DOWN'
-                        : 'SIDEWAYS',
-                  signal,
-                  confidence: Math.floor(Math.abs(commodity.changePercent) * 25 + 55),
-                },
-                keyLevel: commodity.price * 0.98,
-                entryZone: `${(commodity.price * 0.97).toFixed(2)} - ${(commodity.price * 1.02).toFixed(2)}`,
-                stopLoss: `${(commodity.price * 0.93).toFixed(2)}`,
-                takeProfit: `${(commodity.price * 1.08).toFixed(2)}`,
-                takeProfitTargets: buildTakeProfitTargets(commodity.price, config.type, signal),
-                reasoning: `Live commodity pricing from Twelve Data (Yahoo fallback) | Market data`,
-                lastUpdate: new Date().toISOString(),
-              }
-        }
+      .map(asset => {
+        const tradability = calculateTradability(asset as AssetTrend);
+        const score = scoreByHorizon[horizon](asset as AssetTrend, tradability);
+        return {
+          ...asset,
+          score,
+          signal: (asset as AssetTrend).technicals.signal,
+          phase: inferPhase(asset as AssetTrend),
+          outlook: '',
+          focus: '',
+          confidence: (asset as AssetTrend).technicals.confidence,
+          tradability,
+        };
       })
       .sort((left, right) => right.score - left.score)
-      .slice(0, 6)
+      .slice(0, 6);
   }
 
   const debriefByHorizon = {
