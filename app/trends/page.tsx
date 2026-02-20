@@ -292,10 +292,10 @@ export default function TrendsPage() {
               //   atrValue = calculateATR(candles)
               // }
               // Fetch volume from Twelve Data (if available)
-              const volume = await getLatestVolume(config.symbol, config.type, '1h')
-              if (typeof volume === 'number' && Number.isFinite(volume)) {
-                volumeValue = volume
-              }
+              // const volume = await getLatestVolume(config.symbol, config.type, '1h')
+              // if (typeof volume === 'number' && Number.isFinite(volume)) {
+              //   volumeValue = volume
+              // }
               // Fetch order block analysis
               const obUrl = `/api/analysis/order-blocks?symbol=${config.symbol}&type=${config.type}&price=${cryptoData[config.symbol]?.price ?? forexData[config.symbol]?.bid ?? indicesData[config.symbol]?.price ?? commoditiesData[config.symbol]?.price ?? 0}&timeframe=1h`
               let obResponse = await fetch(obUrl)
