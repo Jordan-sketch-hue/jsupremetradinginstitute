@@ -24,13 +24,41 @@ export async function getHistoricalCloses(
     const data = await response.json()
     if (data?.status === 'error' || !Array.isArray(data?.values) || data.values.length === 0)
       return null
-    const closes = data.values
+    let closes = data.values
       .map((entry: any) => {
         const close = toNumber(entry.close)
         return close
       })
       .filter((v: number | null) => typeof v === 'number' && Number.isFinite(v))
       .reverse()
+    // If not enough closes, retry with longer interval
+    if (closes.length < 15) {
+      const fallbackIntervals = ['4h', '1d', '1w']
+      for (const interval of fallbackIntervals) {
+        const mappedFallback = mapTwelveInterval(interval)
+        const fallbackUrl = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(twelveSymbol)}&interval=${mappedFallback.interval}&outputsize=${mappedFallback.outputsize}&apikey=${process.env.TWELVE_DATA_API_KEY}`
+        const fallbackResp = await fetch(fallbackUrl, { cache: 'no-store' })
+        if (!fallbackResp.ok) continue
+        const fallbackData = await fallbackResp.json()
+        if (
+          fallbackData?.status === 'error' ||
+          !Array.isArray(fallbackData?.values) ||
+          fallbackData.values.length === 0
+        )
+          continue
+        const fallbackCloses = fallbackData.values
+          .map((entry: any) => {
+            const close = toNumber(entry.close)
+            return close
+          })
+          .filter((v: number | null) => typeof v === 'number' && Number.isFinite(v))
+          .reverse()
+        if (fallbackCloses.length >= 15) {
+          closes = fallbackCloses
+          break
+        }
+      }
+    }
     if (closes.length === 0) return null
     return closes
   } catch {
