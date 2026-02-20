@@ -114,9 +114,9 @@ const ASSETS_CONFIG: Array<{
   { symbol: 'USDCAD', name: 'USD/CAD', type: 'forex' },
   { symbol: 'USDMXN', name: 'USD/MXN', type: 'forex' },
   { symbol: 'USDTRY', name: 'USD/TRY', type: 'forex' },
-  { symbol: 'BTC/USD', name: 'Bitcoin', type: 'crypto' },
-  { symbol: 'ETH/USD', name: 'Ethereum', type: 'crypto' },
-  { symbol: 'BCH/USD', name: 'Bitcoin Cash', type: 'crypto' },
+  { symbol: 'BTCUSD', name: 'Bitcoin', type: 'crypto' },
+  { symbol: 'ETHUSD', name: 'Ethereum', type: 'crypto' },
+  { symbol: 'BCHUSD', name: 'Bitcoin Cash', type: 'crypto' },
   { symbol: 'XAUUSD', name: 'Gold (XAU/USD)', type: 'commodities' },
   { symbol: 'XAGUSD', name: 'Silver (XAG/USD)', type: 'commodities' },
   { symbol: 'XPTUSD', name: 'Platinum (XPT/USD)', type: 'commodities' },
@@ -816,6 +816,11 @@ export default function TrendsPage() {
                         </span>
                       )}
                     </div>
+                    {asset.technicals.rsi === 50 && (
+                      <div className="text-xs text-yellow-400 font-semibold mt-1">
+                        Warning: RSI is 50 (no historical data available)
+                      </div>
+                    )}
                     {TRADINGVIEW_RSI[asset.symbol] !== undefined &&
                       Math.abs(asset.technicals.rsi - TRADINGVIEW_RSI[asset.symbol]) > 2 && (
                         <div className="text-xs text-red-500 font-semibold mt-1">
