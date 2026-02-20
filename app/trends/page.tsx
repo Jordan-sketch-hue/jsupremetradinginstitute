@@ -13,6 +13,7 @@ const TRADINGVIEW_RSI: Record<string, number> = {
   // Add more symbols as needed
 }
 import AssetDetailModal from '@/components/AssetDetailModal'
+import { TrendsDashboard } from '@/components/TrendsDashboard'
 import TrendsNavigation from '@/components/TrendsNavigation'
 import TradeConfirmationDialog from '@/components/TradeConfirmationDialog'
 
