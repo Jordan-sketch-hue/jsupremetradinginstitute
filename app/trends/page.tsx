@@ -346,38 +346,7 @@ export default function TrendsPage() {
                     reasoning: `Live pricing from Twelve Data (Yahoo fallback) | Updated every 30 seconds`,
                     lastUpdate: new Date().toISOString(),
                   }
-                  rsi: closes ? Math.round(calculateRSI(closes)) : 50,
-                  macdSignal: 'NEUTRAL',
-                  momentum: forex.change,
-                  trend: 'SIDEWAYS',
-                  data = {
-                    symbol: config.symbol,
-                    name: config.name,
-                    type: config.type,
-                    currentPrice: forex.bid,
-                    change24h: forex.change,
-                    changePercent24h: forex.changePercent,
-                    dataSource: 'LIVE',
-                    technicals: {
-                      rsi: rsiValue,
-                      macdSignal: 'NEUTRAL',
-                      momentum: forex.change,
-                      trend: forex.changePercent > 0.2 ? 'UP' : forex.changePercent < -0.2 ? 'DOWN' : 'SIDEWAYS',
-                      signal,
-                      confidence: Math.floor(Math.abs(forex.changePercent) * 20 + 50),
-                    },
-                    keyLevel: forex.bid * 0.995,
-                    entryZone: `${(forex.bid * 0.998).toFixed(5)} - ${(forex.bid * 1.002).toFixed(5)}`,
-                    stopLoss: `${(forex.bid * 0.99).toFixed(5)}`,
-                    takeProfit: `${(forex.bid * 1.015).toFixed(5)}`,
-                    takeProfitTargets: buildTakeProfitTargets(forex.bid, config.type, signal),
-                    reasoning: `Live pricing from Twelve Data (Yahoo fallback) | Updated every 30 seconds`,
-                    lastUpdate: new Date().toISOString(),
-                  }
-                  rsi: closes ? Math.round(calculateRSI(closes)) : 50,
-                  macdSignal: index.changePercent > 0 ? 'BULLISH' : 'BEARISH',
-                  momentum: index.change,
-                  trend:
+                  // ...existing code...
                     index.changePercent > 0.5
                       ? 'UP'
                       : index.changePercent < -0.5
