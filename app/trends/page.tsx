@@ -332,12 +332,12 @@ export default function TrendsPage() {
                 changePercent24h: crypto.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-
                   macdSignal: (crypto.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: crypto.change24h ?? 0,
                   trend: (crypto.changePercent24h ?? 0) > 0 ? 'UP' : 'DOWN',
                   signal,
                   confidence: Math.floor(Math.abs(crypto.changePercent24h ?? 0) * 20 + 50),
+                  rsi: 50,
                 },
                 keyLevel: price * 0.99,
                 entryZone: `${(price * 0.98).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
@@ -346,8 +346,8 @@ export default function TrendsPage() {
                 takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
                 reasoning: `Live pricing from Twelve Data | Updated every 30 seconds`,
                 lastUpdate: new Date().toISOString(),
-                orderBlocks,
-                analysisError,
+                // orderBlocks, // Removed to match AssetTrend type
+                // analysisError, // Removed to match AssetTrend type
               }
             } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
               const commodity = commoditiesData[config.symbol]
@@ -370,7 +370,6 @@ export default function TrendsPage() {
                 changePercent24h: commodity.changePercent ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-
                   macdSignal: (commodity.changePercent ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: commodity.change ?? 0,
                   trend:
@@ -380,7 +379,8 @@ export default function TrendsPage() {
                         ? 'DOWN'
                         : 'SIDEWAYS',
                   signal,
-                  confidence: Math.floor(Math.abs(commodity.changePercent ?? 0) * 25 + 55),
+                  confidence: Math.floor(Math.abs(commodity.changePercent ?? 0) * 20 + 50),
+                  rsi: 50,
                 },
                 keyLevel: price * 0.98,
                 entryZone: `${(price * 0.97).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
@@ -413,7 +413,6 @@ export default function TrendsPage() {
                 changePercent24h: forex.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-
                   macdSignal: (forex.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: forex.change ?? 0,
                   trend:
@@ -424,6 +423,7 @@ export default function TrendsPage() {
                         : 'SIDEWAYS',
                   signal,
                   confidence: Math.floor(Math.abs(forex.changePercent24h ?? 0) * 100 + 50),
+                  rsi: 50,
                 },
                 keyLevel: price * 0.99,
                 entryZone: `${(price * 0.98).toFixed(5)} - ${(price * 1.02).toFixed(5)}`,
@@ -452,7 +452,6 @@ export default function TrendsPage() {
                 changePercent24h: index.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-
                   macdSignal: (index.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: index.change ?? 0,
                   trend:
@@ -463,6 +462,7 @@ export default function TrendsPage() {
                         : 'SIDEWAYS',
                   signal,
                   confidence: Math.floor(Math.abs(index.changePercent24h ?? 0) * 100 + 50),
+                  rsi: 50,
                 },
                 keyLevel: price * 0.99,
                 entryZone: `${(price * 0.98).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
