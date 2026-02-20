@@ -440,7 +440,7 @@ export default function TrendsPage() {
         setIsRefreshing(false)
       }
     }
-
+  // <-- Add closing brace for useEffect callback here
     fetchMarketData()
     const interval = setInterval(fetchMarketData, 30000)
     return () => clearInterval(interval)
