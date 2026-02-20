@@ -10,13 +10,32 @@ export async function getHistoricalCloses(
   assetType: string = 'forex',
   timeframe: string = '1h'
 ): Promise<number[] | null> {
-  // Always use Twelve Data first, Yahoo only as backend fallback
-  const history = await (
-    await import('./marketDataProvider')
-  ).getHistoricalCandles(symbol, assetType, timeframe)
-  if (!history || !Array.isArray(history.candles) || history.candles.length === 0) return null
-  // Return closes, most recent last
-  return history.candles.map(c => c.close)
+  // Only use Twelve Data, never Yahoo fallback
+  const mapped = mapTwelveInterval(timeframe)
+  let twelveSymbol = symbol
+  if (assetType === 'forex') twelveSymbol = normalizeForex(symbol)
+  if (assetType === 'crypto') twelveSymbol = normalizeCrypto(symbol)
+  if (assetType === 'indices') twelveSymbol = INDEX_TWELVE_SYMBOL_MAP[symbol] || symbol
+  if (assetType === 'commodities') twelveSymbol = COMMODITY_TWELVE_SYMBOL_MAP[symbol] || symbol
+  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(twelveSymbol)}&interval=${mapped.interval}&outputsize=${mapped.outputsize}&apikey=${process.env.TWELVE_DATA_API_KEY}`
+  try {
+    const response = await fetch(url, { cache: 'no-store' })
+    if (!response.ok) return null
+    const data = await response.json()
+    if (data?.status === 'error' || !Array.isArray(data?.values) || data.values.length === 0)
+      return null
+    const closes = data.values
+      .map((entry: any) => {
+        const close = toNumber(entry.close)
+        return close
+      })
+      .filter((v: number | null) => typeof v === 'number' && Number.isFinite(v))
+      .reverse()
+    if (closes.length === 0) return null
+    return closes
+  } catch {
+    return null
+  }
 }
 import yahooFinance from 'yahoo-finance2'
 type Provider = 'TWELVE_DATA' | 'YAHOO'
