@@ -280,10 +280,9 @@ export default function TrendsPage() {
             let data: AssetTrend | null = null;
             let closes: number[] | null = null;
             let rsiValue: number = 50;
-            // Always use manual RSI if available
+            // Always use manual RSI if available, never fallback if present
             if (TRADINGVIEW_RSI[config.symbol] !== undefined) {
               rsiValue = TRADINGVIEW_RSI[config.symbol];
-              // No warning needed if manual value is present
             } else {
               try {
                 closes = await getHistoricalCloses(config.symbol, config.type, '1h');
@@ -297,14 +296,12 @@ export default function TrendsPage() {
                     rsiValue
                   );
                 } else {
-                  // Only warn if both manual and calculated RSI are unavailable
                   if (rsiValue === 50) {
                     // eslint-disable-next-line no-console
                     console.warn(`RSI DIAG: ${config.symbol} has insufficient closes for RSI!`);
                   }
                 }
               } catch (err) {
-                // Only warn if both manual and calculated RSI are unavailable
                 if (rsiValue === 50) {
                   // eslint-disable-next-line no-console
                   console.error(`RSI DIAG: Error fetching closes for ${config.symbol}:`, err);
