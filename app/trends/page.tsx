@@ -574,11 +574,11 @@ export default function TrendsPage() {
       .map(asset => {
         const tradability = calculateTradability(asset as AssetTrend)
         const score = scoreByHorizon[horizon](asset as AssetTrend, tradability)
-        return {
-          ...asset,
-          score,
-          signal: (asset as AssetTrend).technicals.signal,
-          phase: inferPhase(asset as AssetTrend),
+        return (
+          <div className="min-h-screen bg-slate-950 text-white">
+            {/* Sticky nav bar: add margin for desktop sticky nav */}
+            <TrendsNavigation onNavigate={handleSectionNavigate} activeSection={activeSection} />
+            <div className="max-w-7xl mx-auto px-2 md:px-4 pt-4 md:pt-24">
           outlook: '',
           focus: '',
           confidence: (asset as AssetTrend).technicals.confidence,

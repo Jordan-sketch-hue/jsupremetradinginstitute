@@ -103,7 +103,7 @@ export default function TrendsNavigation({ onNavigate, activeSection }: TrendsNa
   }
 
   return (
-    <div className="fixed bottom-0 left-0 w-full z-50 backdrop-blur-xl bg-slate-950/90 border-t border-slate-800 md:static md:top-0 md:border-b md:border-t-0">
+    <div className="fixed bottom-0 left-0 w-full z-50 backdrop-blur-xl bg-slate-950/90 border-t border-slate-800 md:sticky md:top-0 md:border-b md:border-t-0">
       <div className="max-w-7xl mx-auto px-2 py-2 md:px-4 md:py-4">
         {/* Mobile Toggle */}
         <div className="flex items-center justify-between md:hidden mb-2">
