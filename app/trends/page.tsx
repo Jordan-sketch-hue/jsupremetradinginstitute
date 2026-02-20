@@ -348,30 +348,6 @@ export default function TrendsPage() {
                 reasoning: `Live commodity pricing from Twelve Data (Yahoo fallback) | Market data`,
                 lastUpdate: new Date().toISOString(),
               };
-                change24h: index.change,
-                changePercent24h: index.changePercent,
-                dataSource: 'LIVE',
-                technicals: {
-                  rsi: rsiValue,
-                  macdSignal: index.changePercent > 0 ? 'BULLISH' : 'BEARISH',
-                  momentum: index.change,
-                  trend:
-                    index.changePercent > 0.5
-                      ? 'UP'
-                      : index.changePercent < -0.5
-                        ? 'DOWN'
-                        : 'SIDEWAYS',
-                  signal,
-                  confidence: Math.floor(Math.abs(index.changePercent) * 20 + 50),
-                },
-                keyLevel: index.price * 0.99,
-                entryZone: `${(index.price * 0.998).toFixed(2)} - ${(index.price * 1.002).toFixed(2)}`,
-                stopLoss: `${(index.price * 0.97).toFixed(2)}`,
-                takeProfit: `${(index.price * 1.05).toFixed(2)}`,
-                takeProfitTargets: buildTakeProfitTargets(index.price, config.type, signal),
-                reasoning: `Live index data from Twelve Data (Yahoo fallback) | Real market pricing`,
-                lastUpdate: new Date().toISOString(),
-              }
       try {
         // ...existing code for error/asset update logic...
         console.error('Error fetching market data:', error)
