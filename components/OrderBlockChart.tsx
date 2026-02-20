@@ -304,6 +304,35 @@ export default function OrderBlockChart({
   const yEntry = priceToY(entryPrice)
   const yStop = priceToY(stopLoss)
 
+  // Y-axis price labels (5 intervals)
+  const yAxisTicks = 5
+  const yAxisLabels = Array.from({ length: yAxisTicks + 1 }, (_, i) => {
+    const price = yMax - (i * (yMax - yMin)) / yAxisTicks
+    const y = priceToY(price)
+    return { price, y }
+  })
+
+  // X-axis time labels (6 intervals)
+  const xAxisTicks = 6
+  const xAxisLabels = Array.from({ length: xAxisTicks + 1 }, (_, i) => {
+    const idx = Math.round((i * (candles.length - 1)) / xAxisTicks)
+    const candle = candles[idx]
+    // Show only hour/minute if available, else index
+    let label = ''
+    if (candle && candle.timestamp) {
+      const d = new Date(candle.timestamp)
+      label = d.toLocaleString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        month: 'short',
+        day: 'numeric',
+      })
+    } else {
+      label = idx.toString()
+    }
+    return { label, x: idx * xStep + xStep / 2 }
+  })
+
   return (
     <div className="w-full bg-slate-800 rounded-lg p-4 border border-slate-700">
       <div className="flex items-center justify-between mb-2">
@@ -448,140 +477,195 @@ export default function OrderBlockChart({
 
       {/* Chart */}
       <div className="overflow-x-auto mb-4">
-        <svg
-          width={Math.max(chartWidth, 600)}
-          height={chartHeight}
-          className="bg-slate-900 rounded border border-slate-700"
+        <div
+          style={{
+            position: 'relative',
+            width: Math.max(chartWidth, 600),
+            height: chartHeight + 32,
+          }}
         >
-          {/* Grid */}
-          {[0.25, 0.5, 0.75].map(ratio => (
-            <line
-              key={`hgrid-${ratio}`}
-              x1="0"
-              y1={chartHeight * ratio}
-              x2={chartWidth}
-              y2={chartHeight * ratio}
-              stroke="#334155"
-              strokeWidth="0.5"
-              opacity="0.3"
-            />
-          ))}
-
-          {/* Order Blocks (background) */}
-          {showBullishOB && bullishObElements}
-          {showBearishOB && bearishObElements}
-
-          {/* Support/Resistance (behind candles) */}
-          {showSupport && supportElements}
-          {showResistance && resistanceElements}
-
-          {/* Price representation */}
-          {chartMode === 'candles' ? (
-            candleElements
-          ) : (
-            <polyline points={linePoints} fill="none" stroke="#38bdf8" strokeWidth="2" />
-          )}
-
-          {showLiquiditySweeps &&
-            sweepMarkers.map((marker, index) => (
-              <g key={`sweep-${index}`}>
-                <circle
-                  cx={marker.x}
-                  cy={marker.y}
-                  r="4"
-                  fill={marker.type === 'BUY_SIDE' ? '#f97316' : '#22c55e'}
-                />
+          <svg
+            width={Math.max(chartWidth, 600)}
+            height={chartHeight}
+            className="bg-slate-900 rounded border border-slate-700"
+            style={{ position: 'absolute', left: 0, top: 0 }}
+          >
+            {/* Grid */}
+            {[0.25, 0.5, 0.75].map(ratio => (
+              <line
+                key={`hgrid-${ratio}`}
+                x1="0"
+                y1={chartHeight * ratio}
+                x2={chartWidth}
+                y2={chartHeight * ratio}
+                stroke="#334155"
+                strokeWidth="0.5"
+                opacity="0.3"
+              />
+            ))}
+            {/* Y-axis price labels */}
+            {yAxisLabels.map((tick, i) => (
+              <g key={`yaxis-label-${i}`}>
                 <text
-                  x={marker.x + 6}
-                  y={marker.y - 6}
-                  fill={marker.type === 'BUY_SIDE' ? '#fb923c' : '#4ade80'}
-                  fontSize="10"
-                  fontWeight="700"
+                  x={4}
+                  y={tick.y + 4}
+                  fill="#cbd5e1"
+                  fontSize="11"
+                  fontWeight="500"
+                  textAnchor="start"
+                  style={{ userSelect: 'none' }}
                 >
-                  {marker.type === 'BUY_SIDE' ? 'BSL Sweep' : 'SSL Sweep'}
+                  {tick.price.toFixed(2)}
                 </text>
+                <line
+                  x1={0}
+                  y1={tick.y}
+                  x2={8}
+                  y2={tick.y}
+                  stroke="#64748b"
+                  strokeWidth="1"
+                  opacity="0.4"
+                />
               </g>
             ))}
 
-          {/* Current Price Line */}
-          {showCurrentPrice && (
-            <>
-              <line
-                x1="0"
-                y1={yCurrentPrice}
-                x2={chartWidth}
-                y2={yCurrentPrice}
-                stroke="#a78bfa"
-                strokeWidth="2"
-                strokeDasharray="6"
-              />
-              <text x={8} y={yCurrentPrice - 6} fill="#a78bfa" fontSize="11" fontWeight="700">
-                Current
-              </text>
-            </>
-          )}
+            {/* Order Blocks (background) */}
+            {showBullishOB && bullishObElements}
+            {showBearishOB && bearishObElements}
 
-          {showEntryTargets && (
-            <>
-              <line
-                x1="0"
-                y1={yEntry}
-                x2={chartWidth}
-                y2={yEntry}
-                stroke="#22c55e"
-                strokeWidth="1.5"
-                strokeDasharray="4"
-              />
-              <text x={8} y={yEntry - 6} fill="#22c55e" fontSize="11" fontWeight="700">
-                Entry
-              </text>
+            {/* Support/Resistance (behind candles) */}
+            {showSupport && supportElements}
+            {showResistance && resistanceElements}
 
-              {takeProfitTargets.map(tp => {
-                const y = priceToY(tp.price)
-                return (
-                  <g key={`tp-${tp.label}`}>
-                    <line
-                      x1="0"
-                      y1={y}
-                      x2={chartWidth}
-                      y2={y}
-                      stroke="#10b981"
-                      strokeWidth="1.25"
-                      strokeDasharray="3"
-                      opacity="0.8"
-                    />
-                    <text
-                      x={chartWidth - 70}
-                      y={y - 6}
-                      fill="#10b981"
-                      fontSize="10"
-                      fontWeight="700"
-                    >
-                      {tp.label}
-                    </text>
-                  </g>
-                )
-              })}
-            </>
-          )}
+            {/* Price representation */}
+            {chartMode === 'candles' ? (
+              candleElements
+            ) : (
+              <polyline points={linePoints} fill="none" stroke="#38bdf8" strokeWidth="2" />
+            )}
 
-          {showStopLoss && (
-            <>
-              <line
-                x1="0"
-                y1={yStop}
-                x2={chartWidth}
-                y2={yStop}
-                stroke="#ef4444"
-                strokeWidth="1.5"
-                strokeDasharray="4"
-              />
-              <text x={8} y={yStop - 6} fill="#ef4444" fontSize="11" fontWeight="700">
-                Stop Loss
+            {showLiquiditySweeps &&
+              sweepMarkers.map((marker, index) => (
+                <g key={`sweep-${index}`}>
+                  <circle
+                    cx={marker.x}
+                    cy={marker.y}
+                    r="4"
+                    fill={marker.type === 'BUY_SIDE' ? '#f97316' : '#22c55e'}
+                  />
+                  <text
+                    x={marker.x + 6}
+                    y={marker.y - 6}
+                    fill={marker.type === 'BUY_SIDE' ? '#fb923c' : '#4ade80'}
+                    fontSize="10"
+                    fontWeight="700"
+                  >
+                    {marker.type === 'BUY_SIDE' ? 'BSL Sweep' : 'SSL Sweep'}
+                  </text>
+                </g>
+              ))}
+
+            {/* Current Price Line */}
+            {showCurrentPrice && (
+              <>
+                <line
+                  x1="0"
+                  y1={yCurrentPrice}
+                  x2={chartWidth}
+                  y2={yCurrentPrice}
+                  stroke="#a78bfa"
+                  strokeWidth="2"
+                  strokeDasharray="6"
+                />
+                <text x={8} y={yCurrentPrice - 6} fill="#a78bfa" fontSize="11" fontWeight="700">
+                  Current
+                </text>
+              </>
+            )}
+
+            {showEntryTargets && (
+              <>
+                <line
+                  x1="0"
+                  y1={yEntry}
+                  x2={chartWidth}
+                  y2={yEntry}
+                  stroke="#22c55e"
+                  strokeWidth="1.5"
+                  strokeDasharray="4"
+                />
+                <text x={8} y={yEntry - 6} fill="#22c55e" fontSize="11" fontWeight="700">
+                  Entry
+                </text>
+
+                {takeProfitTargets.map(tp => {
+                  const y = priceToY(tp.price)
+                  return (
+                    <g key={`tp-${tp.label}`}>
+                      <line
+                        x1="0"
+                        y1={y}
+                        x2={chartWidth}
+                        y2={y}
+                        stroke="#10b981"
+                        strokeWidth="1.25"
+                        strokeDasharray="3"
+                        opacity="0.8"
+                      />
+                      <text
+                        x={chartWidth - 70}
+                        y={y - 6}
+                        fill="#10b981"
+                        fontSize="10"
+                        fontWeight="700"
+                      >
+                        {tp.label}
+                      </text>
+                    </g>
+                  )
+                })}
+              </>
+            )}
+
+            {showStopLoss && (
+              <>
+                <line
+                  x1="0"
+                  y1={yStop}
+                  x2={chartWidth}
+                  y2={yStop}
+                  stroke="#ef4444"
+                  strokeWidth="1.5"
+                  strokeDasharray="4"
+                />
+                <text x={8} y={yStop - 6} fill="#ef4444" fontSize="11" fontWeight="700">
+                  Stop Loss
+                </text>
+              </>
+            )}
+          </svg>
+          {/* X-axis time labels (below chart) */}
+          <svg
+            width={Math.max(chartWidth, 600)}
+            height={32}
+            style={{ position: 'absolute', left: 0, top: chartHeight }}
+          >
+            {xAxisLabels.map((tick, i) => (
+              <text
+                key={`xaxis-label-${i}`}
+                x={tick.x}
+                y={20}
+                fill="#cbd5e1"
+                fontSize="11"
+                fontWeight="500"
+                textAnchor="middle"
+                style={{ userSelect: 'none' }}
+              >
+                {tick.label}
               </text>
-            </>
-          )}
-        </svg>
+            ))}
+          </svg>
+        </div>
       </div>
 
       {/* Legend */}
