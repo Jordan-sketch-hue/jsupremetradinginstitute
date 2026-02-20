@@ -280,35 +280,18 @@ export default function TrendsPage() {
             let data: AssetTrend | null = null;
             let closes: number[] | null = null;
             let rsiValue: number = 50;
-            // Always calculate RSI from closes if available, fallback to 50 only if calculation fails
             try {
               closes = await getHistoricalCloses(config.symbol, config.type, '1h');
               if (closes && closes.length > 0) {
                 rsiValue = Math.round(calculateRSI(closes));
-                // eslint-disable-next-line no-console
-                console.log(
-                  `RSI DIAG: ${config.symbol} closes:`,
-                  closes.slice(-20),
-                  'RSI:',
-                  rsiValue
-                );
-              } else {
-                if (rsiValue === 50) {
-                  // eslint-disable-next-line no-console
-                  console.warn(`RSI DIAG: ${config.symbol} has insufficient closes for RSI!`);
-                }
               }
             } catch (err) {
-              if (rsiValue === 50) {
-                // eslint-disable-next-line no-console
-                console.error(`RSI DIAG: Error fetching closes for ${config.symbol}:`, err);
-              }
+              // fallback to 50
             }
 
             if (config.type === 'crypto' && cryptoData[config.symbol]) {
-              const crypto = cryptoData[config.symbol]
-              const signal =
-                crypto.changePercent24h > 2 ? 'BUY' : crypto.changePercent24h < -2 ? 'SELL' : 'WAIT'
+              const crypto = cryptoData[config.symbol];
+              const signal = crypto.changePercent24h > 2 ? 'BUY' : crypto.changePercent24h < -2 ? 'SELL' : 'WAIT';
               data = {
                 symbol: config.symbol,
                 name: config.name,
@@ -318,51 +301,24 @@ export default function TrendsPage() {
                 changePercent24h: crypto.changePercent24h,
                 dataSource: 'LIVE',
                 technicals: {
-                  rsi: closes ? Math.round(calculateRSI(closes)) : 50,
+                  rsi: rsiValue,
                   macdSignal: crypto.changePercent24h > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: crypto.change24h,
                   trend: crypto.changePercent24h > 0 ? 'UP' : 'DOWN',
-                  data = {
-                    symbol: config.symbol,
-                    name: config.name,
-                    type: config.type,
-                    currentPrice: crypto.price,
-                    change24h: crypto.change24h,
-                    changePercent24h: crypto.changePercent24h,
-                    dataSource: 'LIVE',
-                    technicals: {
-                      rsi: rsiValue,
-                      macdSignal: crypto.changePercent24h > 0 ? 'BULLISH' : 'BEARISH',
-                      momentum: crypto.change24h,
-                      trend: crypto.changePercent24h > 0 ? 'UP' : 'DOWN',
-                      signal,
-                      confidence: Math.floor(Math.abs(crypto.changePercent24h) * 20 + 50),
-                    },
-                    keyLevel: crypto.price * 0.99,
-                    entryZone: `${(crypto.price * 0.98).toFixed(2)} - ${(crypto.price * 1.02).toFixed(2)}`,
-                    stopLoss: `${(crypto.price * 0.95).toFixed(2)}`,
-                    takeProfit: `${(crypto.price * 1.08).toFixed(2)}`,
-                    takeProfitTargets: buildTakeProfitTargets(crypto.price, config.type, signal),
-                    reasoning: `Live pricing from Twelve Data (Yahoo fallback) | Updated every 30 seconds`,
-                    lastUpdate: new Date().toISOString(),
-                  }
+                  signal,
+                  confidence: Math.floor(Math.abs(crypto.changePercent24h) * 20 + 50),
                 },
-                keyLevel: index.price * 0.99,
-                entryZone: `${(index.price * 0.998).toFixed(2)} - ${(index.price * 1.002).toFixed(2)}`,
-                stopLoss: `${(index.price * 0.97).toFixed(2)}`,
-                takeProfit: `${(index.price * 1.05).toFixed(2)}`,
-                takeProfitTargets: buildTakeProfitTargets(index.price, config.type, signal),
-                reasoning: `Live index data from Twelve Data (Yahoo fallback) | Real market pricing`,
+                keyLevel: crypto.price * 0.99,
+                entryZone: `${(crypto.price * 0.98).toFixed(2)} - ${(crypto.price * 1.02).toFixed(2)}`,
+                stopLoss: `${(crypto.price * 0.95).toFixed(2)}`,
+                takeProfit: `${(crypto.price * 1.08).toFixed(2)}`,
+                takeProfitTargets: buildTakeProfitTargets(crypto.price, config.type, signal),
+                reasoning: `Live pricing from Twelve Data (Yahoo fallback) | Updated every 30 seconds`,
                 lastUpdate: new Date().toISOString(),
-              }
+              };
             } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
-              const commodity = commoditiesData[config.symbol]
-              const signal =
-                commodity.changePercent > 0.5
-                  ? 'BUY'
-                  : commodity.changePercent < -0.5
-                    ? 'SELL'
-                    : 'WAIT'
+              const commodity = commoditiesData[config.symbol];
+              const signal = commodity.changePercent > 0.5 ? 'BUY' : commodity.changePercent < -0.5 ? 'SELL' : 'WAIT';
               data = {
                 symbol: config.symbol,
                 name: config.name,
@@ -372,7 +328,7 @@ export default function TrendsPage() {
                 changePercent24h: commodity.changePercent,
                 dataSource: 'LIVE',
                 technicals: {
-                  rsi: closes ? Math.round(calculateRSI(closes)) : 50,
+                  rsi: rsiValue,
                   macdSignal: commodity.changePercent > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: commodity.change,
                   trend:
@@ -391,13 +347,7 @@ export default function TrendsPage() {
                 takeProfitTargets: buildTakeProfitTargets(commodity.price, config.type, signal),
                 reasoning: `Live commodity pricing from Twelve Data (Yahoo fallback) | Market data`,
                 lastUpdate: new Date().toISOString(),
-              }
-            }
-              data = {
-                symbol: config.symbol,
-                name: config.name,
-                type: config.type,
-                currentPrice: index.price,
+              };
                 change24h: index.change,
                 changePercent24h: index.changePercent,
                 dataSource: 'LIVE',
@@ -440,11 +390,10 @@ export default function TrendsPage() {
         setIsRefreshing(false)
       }
     }
-  // <-- Add closing brace for useEffect callback here
     fetchMarketData()
-    const interval = setInterval(fetchMarketData, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    const interval = setInterval(fetchMarketData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   function calculateTradability(asset: AssetTrend): number {
     // Combines: confidence (40%), signal strength (30%), trend reliability (30%)
