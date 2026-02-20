@@ -332,7 +332,7 @@ export default function TrendsPage() {
                 changePercent24h: crypto.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  volume: volumeValue,
+
                   macdSignal: (crypto.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: crypto.change24h ?? 0,
                   trend: (crypto.changePercent24h ?? 0) > 0 ? 'UP' : 'DOWN',
@@ -370,7 +370,7 @@ export default function TrendsPage() {
                 changePercent24h: commodity.changePercent ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  volume: volumeValue,
+
                   macdSignal: (commodity.changePercent ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: commodity.change ?? 0,
                   trend:
@@ -413,7 +413,7 @@ export default function TrendsPage() {
                 changePercent24h: forex.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  volume: volumeValue,
+
                   macdSignal: (forex.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: forex.change ?? 0,
                   trend:
@@ -452,7 +452,7 @@ export default function TrendsPage() {
                 changePercent24h: index.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  volume: volumeValue,
+
                   macdSignal: (index.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: index.change ?? 0,
                   trend:
