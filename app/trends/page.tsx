@@ -332,7 +332,6 @@ export default function TrendsPage() {
                 changePercent24h: crypto.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  atr: atrValue,
                   volume: volumeValue,
                   macdSignal: (crypto.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: crypto.change24h ?? 0,
@@ -371,7 +370,6 @@ export default function TrendsPage() {
                 changePercent24h: commodity.changePercent ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  atr: atrValue,
                   volume: volumeValue,
                   macdSignal: (commodity.changePercent ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: commodity.change ?? 0,
@@ -415,7 +413,6 @@ export default function TrendsPage() {
                 changePercent24h: forex.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  atr: atrValue,
                   volume: volumeValue,
                   macdSignal: (forex.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: forex.change ?? 0,
@@ -455,7 +452,6 @@ export default function TrendsPage() {
                 changePercent24h: index.changePercent24h ?? 0,
                 dataSource: 'LIVE',
                 technicals: {
-                  atr: atrValue,
                   volume: volumeValue,
                   macdSignal: (index.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
                   momentum: index.change ?? 0,
@@ -577,9 +573,14 @@ export default function TrendsPage() {
       .map(asset => {
         const tradability = calculateTradability(asset as AssetTrend)
         const score = scoreByHorizon[horizon](asset as AssetTrend, tradability)
+        // Add required DebriefAsset properties
         return {
-          ...asset,
+          symbol: asset.symbol,
+          name: asset.name,
+          type: asset.type,
           score,
+          signal: asset.technicals.signal,
+          phase: inferPhase(asset as AssetTrend),
           outlook: '',
           focus: '',
           confidence: (asset as AssetTrend).technicals.confidence,
