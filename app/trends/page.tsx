@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, GraduationCap, Tv } from 'lucide-react'
 import Link from 'next/link'
-import { TechnicalIndicators, calculateRSI } from '@/lib/technicalAnalysis'
+import { TechnicalIndicators, calculateRSI, calculateATR } from '@/lib/technicalAnalysis'
 import { getHistoricalCloses } from '@/lib/marketDataProvider'
 
 // TEMP: Manually input TradingView RSI for EURUSD 1h for comparison (in real use, fetch via admin or API)

@@ -1,4 +1,28 @@
 /**
+ * Calculate ATR (Average True Range)
+ * ATR = Moving average of True Range over period
+ * True Range = max(high-low, abs(high-prevClose), abs(low-prevClose))
+ * Expects candles as array of {high, low, close}
+ */
+export function calculateATR(
+  candles: { high: number; low: number; close: number }[],
+  period: number = 14
+): number {
+  if (!candles || candles.length < period + 1) return 0
+  let trs: number[] = []
+  for (let i = 1; i < candles.length; i++) {
+    const prevClose = candles[i - 1].close
+    const high = candles[i].high
+    const low = candles[i].low
+    const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose))
+    trs.push(tr)
+  }
+  // Simple moving average of TRs
+  const recentTRs = trs.slice(-period)
+  const atr = recentTRs.reduce((a, b) => a + b, 0) / period
+  return Math.round(atr * 10000) / 10000
+}
+/**
  * Technical Analysis Indicators
  * Calculate RSI, MACD, Momentum, ATR for real trading signals
  */

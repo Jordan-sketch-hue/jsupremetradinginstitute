@@ -73,7 +73,10 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error('Order block analysis error:', err)
     return NextResponse.json(
-      { error: 'Order block analysis error', details: err instanceof Error ? err.message : String(err) },
+      {
+        error: 'Order block analysis error',
+        details: err instanceof Error ? err.message : String(err),
+      },
       { status: 500 }
     )
   }
