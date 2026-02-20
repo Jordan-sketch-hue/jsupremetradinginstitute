@@ -92,19 +92,21 @@ export default function TrendsNavigation({ onNavigate, activeSection }: TrendsNa
       window.open('/bot-dashboard', '_blank')
       return
     }
-
     const element = document.getElementById(sectionId)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      onNavigate(sectionId)
+    } else {
+      // Always call onNavigate to update state even if section not found
       onNavigate(sectionId)
     }
   }
 
   return (
-    <div className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/80 border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 py-4">
+    <div className="fixed bottom-0 left-0 w-full z-50 backdrop-blur-xl bg-slate-950/90 border-t border-slate-800 md:static md:top-0 md:border-b md:border-t-0">
+      <div className="max-w-7xl mx-auto px-2 py-2 md:px-4 md:py-4">
         {/* Mobile Toggle */}
-        <div className="flex items-center justify-between md:hidden mb-3">
+        <div className="flex items-center justify-between md:hidden mb-2">
           <h3 className="text-sm font-bold text-slate-300 flex items-center gap-2">
             <Zap size={16} className="text-emerald-500" />
             Quick Navigation
@@ -126,29 +128,33 @@ export default function TrendsNavigation({ onNavigate, activeSection }: TrendsNa
           animate={{ height: isExpanded ? 'auto' : 0 }}
           className="overflow-hidden md:overflow-visible md:h-auto"
         >
-          <div className="flex flex-wrap gap-2 md:gap-3">
+          <div className="flex flex-nowrap overflow-x-auto gap-2 md:gap-3 justify-center md:justify-start">
             {TRENDS_SECTIONS.map((section, idx) => (
               <motion.button
                 key={section.id}
-                initial={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
+                transition={{ delay: idx * 0.04 }}
                 onClick={() => scrollToSection(section.id)}
-                className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+                className={`flex flex-col items-center px-2 md:px-4 py-1.5 md:py-2 rounded-lg font-medium text-xs md:text-sm transition-all whitespace-nowrap ${
                   activeSection === section.id
                     ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
                 }`}
+                style={{ minWidth: 60 }}
               >
-                <span className="mr-1.5 text-slate-300">{section.icon}</span>
-                {section.label}
+                <span className="mb-0.5 text-slate-300">{section.icon}</span>
+                {/* Only show label on md+ screens */}
+                <span className="hidden md:inline">{section.label}</span>
               </motion.button>
             ))}
           </div>
         </motion.div>
 
         {/* Desktop Horizontal Scroll Indicator */}
-        <p className="text-xs text-slate-500 mt-2 md:hidden">← Scroll for more sections →</p>
+        <p className="text-xs text-slate-500 mt-2 md:hidden text-center">
+          ← Scroll for more sections →
+        </p>
       </div>
     </div>
   )

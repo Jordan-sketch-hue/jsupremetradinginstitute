@@ -1,3 +1,21 @@
+/**
+ * Fetch historical closes for a symbol using both Yahoo and Twelve Data as fallback.
+ * Returns array of closing prices (most recent last) or null if unavailable.
+ */
+export async function getHistoricalCloses(
+  symbol: string,
+  assetType: string = 'forex',
+  timeframe: string = '1h'
+): Promise<number[] | null> {
+  // Try both providers for best coverage
+  const history = await (
+    await import('./marketDataProvider')
+  ).getHistoricalCandles(symbol, assetType, timeframe)
+  if (!history || !Array.isArray(history.candles) || history.candles.length === 0) return null
+  // Return closes, most recent last
+  return history.candles.map(c => c.close)
+}
+import yahooFinance from 'yahoo-finance2'
 type Provider = 'TWELVE_DATA' | 'YAHOO'
 
 export interface UnifiedQuote {
