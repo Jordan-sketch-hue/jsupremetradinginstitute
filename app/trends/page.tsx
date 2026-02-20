@@ -289,6 +289,7 @@ export default function TrendsPage() {
               // fallback to 50
             }
 
+            // CRYPTO
             if (config.type === 'crypto' && cryptoData[config.symbol]) {
               const crypto = cryptoData[config.symbol]
               const signal =
@@ -317,7 +318,9 @@ export default function TrendsPage() {
                 reasoning: `Live pricing from Twelve Data (Yahoo fallback) | Updated every 30 seconds`,
                 lastUpdate: new Date().toISOString(),
               }
-            } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
+            }
+            // COMMODITIES
+            else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
               const commodity = commoditiesData[config.symbol]
               const signal =
                 commodity.changePercent > 0.5
@@ -355,7 +358,89 @@ export default function TrendsPage() {
                 lastUpdate: new Date().toISOString(),
               }
             }
-            // TODO: Add other asset types (forex, indices) as needed
+            // FOREX
+            else if (config.type === 'forex' && forexData[config.symbol]) {
+              const forex = forexData[config.symbol]
+              const signal =
+                forex.changePercent24h > 0.2
+                  ? 'BUY'
+                  : forex.changePercent24h < -0.2
+                    ? 'SELL'
+                    : 'WAIT'
+              data = {
+                symbol: config.symbol,
+                name: config.name,
+                type: config.type,
+                currentPrice: forex.bid ?? forex.ask ?? 0,
+                change24h: forex.change,
+                changePercent24h: forex.changePercent24h,
+                dataSource: 'LIVE',
+                technicals: {
+                  rsi: rsiValue,
+                  macdSignal: forex.changePercent24h > 0 ? 'BULLISH' : 'BEARISH',
+                  momentum: forex.change,
+                  trend:
+                    forex.changePercent24h > 0
+                      ? 'UP'
+                      : forex.changePercent24h < 0
+                        ? 'DOWN'
+                        : 'SIDEWAYS',
+                  signal,
+                  confidence: Math.floor(Math.abs(forex.changePercent24h) * 100 + 50),
+                },
+                keyLevel: (forex.bid ?? forex.ask ?? 0) * 0.99,
+                entryZone: `${((forex.bid ?? forex.ask ?? 0) * 0.98).toFixed(5)} - ${((forex.bid ?? forex.ask ?? 0) * 1.02).toFixed(5)}`,
+                stopLoss: `${((forex.bid ?? forex.ask ?? 0) * 0.95).toFixed(5)}`,
+                takeProfit: `${((forex.bid ?? forex.ask ?? 0) * 1.08).toFixed(5)}`,
+                takeProfitTargets: buildTakeProfitTargets(
+                  forex.bid ?? forex.ask ?? 0,
+                  config.type,
+                  signal
+                ),
+                reasoning: `Live forex pricing from Twelve Data (Yahoo fallback) | Market data`,
+                lastUpdate: new Date().toISOString(),
+              }
+            }
+            // INDICES
+            else if (config.type === 'indices' && indicesData[config.symbol]) {
+              const index = indicesData[config.symbol]
+              const signal =
+                index.changePercent24h > 0.2
+                  ? 'BUY'
+                  : index.changePercent24h < -0.2
+                    ? 'SELL'
+                    : 'WAIT'
+              data = {
+                symbol: config.symbol,
+                name: config.name,
+                type: config.type,
+                currentPrice: index.price,
+                change24h: index.change,
+                changePercent24h: index.changePercent24h,
+                dataSource: 'LIVE',
+                technicals: {
+                  rsi: rsiValue,
+                  macdSignal: index.changePercent24h > 0 ? 'BULLISH' : 'BEARISH',
+                  momentum: index.change,
+                  trend:
+                    index.changePercent24h > 0
+                      ? 'UP'
+                      : index.changePercent24h < 0
+                        ? 'DOWN'
+                        : 'SIDEWAYS',
+                  signal,
+                  confidence: Math.floor(Math.abs(index.changePercent24h) * 100 + 50),
+                },
+                keyLevel: index.price * 0.99,
+                entryZone: `${(index.price * 0.98).toFixed(2)} - ${(index.price * 1.02).toFixed(2)}`,
+                stopLoss: `${(index.price * 0.95).toFixed(2)}`,
+                takeProfit: `${(index.price * 1.08).toFixed(2)}`,
+                takeProfitTargets: buildTakeProfitTargets(index.price, config.type, signal),
+                reasoning: `Live index pricing from Twelve Data (Yahoo fallback) | Market data`,
+                lastUpdate: new Date().toISOString(),
+              }
+            }
+            // If no data, return null
             return data
           })
         )
