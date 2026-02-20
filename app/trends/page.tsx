@@ -13,7 +13,6 @@ const TRADINGVIEW_RSI: Record<string, number> = {
   // Add more symbols as needed
 }
 import AssetDetailModal from '@/components/AssetDetailModal'
-import { TrendsDashboard } from '@/components/TrendsDashboard'
 import TrendsNavigation from '@/components/TrendsNavigation'
 import TradeConfirmationDialog from '@/components/TradeConfirmationDialog'
 
@@ -338,10 +337,7 @@ export default function TrendsPage() {
                   trend: (crypto.changePercent24h ?? 0) > 0 ? 'UP' : 'DOWN',
                   signal,
                   confidence: Math.floor(Math.abs(crypto.changePercent24h ?? 0) * 20 + 50),
-                  rsi:
-                    typeof crypto.rsi === 'number' && Number.isFinite(crypto.rsi)
-                      ? Math.round(crypto.rsi)
-                      : 50,
+                  rsi: 50,
                 },
                 keyLevel: price * 0.99,
                 entryZone: `${(price * 0.98).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
@@ -384,10 +380,7 @@ export default function TrendsPage() {
                         : 'SIDEWAYS',
                   signal,
                   confidence: Math.floor(Math.abs(commodity.changePercent ?? 0) * 20 + 50),
-                  rsi:
-                    typeof commodity.rsi === 'number' && Number.isFinite(commodity.rsi)
-                      ? Math.round(commodity.rsi)
-                      : 50,
+                  rsi: 50,
                 },
                 keyLevel: price * 0.98,
                 entryZone: `${(price * 0.97).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
@@ -430,10 +423,7 @@ export default function TrendsPage() {
                         : 'SIDEWAYS',
                   signal,
                   confidence: Math.floor(Math.abs(forex.changePercent24h ?? 0) * 100 + 50),
-                  rsi:
-                    typeof forex.rsi === 'number' && Number.isFinite(forex.rsi)
-                      ? Math.round(forex.rsi)
-                      : 50,
+                  rsi: 50,
                 },
                 keyLevel: price * 0.99,
                 entryZone: `${(price * 0.98).toFixed(5)} - ${(price * 1.02).toFixed(5)}`,
@@ -472,10 +462,7 @@ export default function TrendsPage() {
                         : 'SIDEWAYS',
                   signal,
                   confidence: Math.floor(Math.abs(index.changePercent24h ?? 0) * 100 + 50),
-                  rsi:
-                    typeof index.rsi === 'number' && Number.isFinite(index.rsi)
-                      ? Math.round(index.rsi)
-                      : 50,
+                  rsi: 50,
                 },
                 keyLevel: price * 0.99,
                 entryZone: `${(price * 0.98).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
@@ -1309,23 +1296,9 @@ export default function TrendsPage() {
             </div>
           )}
 
-          {/* Modern Trends Dashboard: Top Trade Opportunities */}
+          {/* Top Trades for the Day */}
           <div className="mt-6">
-            <TrendsDashboard
-              assets={topTrades.map(asset => ({
-                symbol: asset.symbol,
-                name: asset.name,
-                price: asset.currentPrice,
-                change: asset.change24h,
-                changePercent: asset.changePercent24h,
-                rsi: asset.technicals.rsi,
-                trend: asset.technicals.trend,
-                macdSignal: asset.technicals.macdSignal,
-                confidence: asset.technicals.confidence,
-                chartData: [],
-                category: asset.type,
-              }))}
-            />
+            {renderAssetSection('top', 'Top Trade Opportunities', topTrades)}
           </div>
 
           {/* Category and Signal Filters */}
@@ -1346,23 +1319,9 @@ export default function TrendsPage() {
             ))}
           </div>
 
-          {/* Modern Trends Dashboard: All Assets */}
+          {/* All assets sorted by confidence, with filters applied */}
           <div className="mt-6">
-            <TrendsDashboard
-              assets={allSortedAssets.map(asset => ({
-                symbol: asset.symbol,
-                name: asset.name,
-                price: asset.currentPrice,
-                change: asset.change24h,
-                changePercent: asset.changePercent24h,
-                rsi: asset.technicals.rsi,
-                trend: asset.technicals.trend,
-                macdSignal: asset.technicals.macdSignal,
-                confidence: asset.technicals.confidence,
-                chartData: [],
-                category: asset.type,
-              }))}
-            />
+            {renderAssetSection('all', 'All Assets (Sorted by Confidence)', allSortedAssets)}
           </div>
 
           <AnimatePresence>
