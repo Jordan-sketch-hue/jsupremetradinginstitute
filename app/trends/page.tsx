@@ -12,11 +12,9 @@ const TRADINGVIEW_RSI: Record<string, number> = {
   EURUSD: 45,
   // Add more symbols as needed
 }
-
 import AssetDetailModal from '@/components/AssetDetailModal'
 import TrendsNavigation from '@/components/TrendsNavigation'
 import TradeConfirmationDialog from '@/components/TradeConfirmationDialog'
-import EconomicNewsSection from '@/components/EconomicNewsSection'
 
 interface AssetTrend {
   symbol: string
@@ -216,6 +214,70 @@ export default function TrendsPage() {
         return []
       }
     }
+
+    const fetchMarketData = async () => {
+      setIsRefreshing(true)
+      try {
+        const cryptoSymbols = ASSETS_CONFIG.filter(a => a.type === 'crypto').map(a => a.symbol)
+        const forexSymbols = ASSETS_CONFIG.filter(a => a.type === 'forex').map(a => a.symbol)
+        const indicesSymbols = ASSETS_CONFIG.filter(a => a.type === 'indices').map(a => a.symbol)
+        const commoditiesSymbols = ASSETS_CONFIG.filter(a => a.type === 'commodities').map(
+          a => a.symbol
+        )
+
+        const [
+          cryptoResponse,
+          forexResponse,
+          indicesResponse,
+          commoditiesResponse,
+          reportResponse,
+        ] = await Promise.all([
+          fetch(`/api/market-data/crypto?symbols=${cryptoSymbols.join(',')}`),
+          fetch(`/api/market-data/forex?symbols=${forexSymbols.join(',')}`),
+          fetch(`/api/market-data/indices?symbols=${indicesSymbols.join(',')}`),
+          fetch(`/api/market-data/commodities?symbols=${commoditiesSymbols.join(',')}`),
+          fetch('/api/market-data/live-report'),
+        ])
+
+        const [cryptoList, forexList, indicesList, commoditiesList] = await Promise.all([
+          parseDataList(cryptoResponse),
+          parseDataList(forexResponse),
+          parseDataList(indicesResponse),
+          parseDataList(commoditiesResponse),
+        ])
+
+        try {
+          if (reportResponse.ok) {
+            const reportPayload = await reportResponse.json()
+            setLiveFailures(Array.isArray(reportPayload?.entries) ? reportPayload.entries : [])
+            setDeploymentInfo(reportPayload?.deployment || null)
+          }
+        } catch {
+          setLiveFailures([])
+          setDeploymentInfo(null)
+        }
+
+        const cryptoData: Record<string, any> = {}
+        const forexData: Record<string, any> = {}
+        const indicesData: Record<string, any> = {}
+        const commoditiesData: Record<string, any> = {}
+
+        cryptoList.forEach((item: any) => {
+          if (item?.symbol) cryptoData[item.symbol] = item
+        })
+        forexList.forEach((item: any) => {
+          if (item?.symbol) forexData[item.symbol] = item
+        })
+        indicesList.forEach((item: any) => {
+          if (item?.symbol) indicesData[item.symbol] = item
+        })
+        commoditiesList.forEach((item: any) => {
+          if (item?.symbol) commoditiesData[item.symbol] = item
+        })
+
+        let assetsList: (AssetTrend | undefined)[] = await Promise.all(
+          ASSETS_CONFIG.map(async config => {
+            let data: AssetTrend | null = null
             let closes: number[] | null = null
             let atrValue: number = 0
             let volumeValue: number = 0
