@@ -59,7 +59,7 @@ export default function EconomicNewsSection() {
                 </span>
                 <span className="font-semibold">{item.event}</span>
                 <span className="ml-2 text-xs text-gray-500">({item.impact})</span>
-                <span className="ml-2 text-xs text-gray-400">[{item.source || source}]</span>
+                <span className="ml-2 text-xs text-gray-400">[{source}]</span>
               </div>
               <div className="text-xs text-gray-400 mt-1 md:mt-0">
                 {new Date(item.pubDate).toLocaleString()}
