@@ -213,31 +213,8 @@ export default function TrendsPage() {
         const list = await response.json()
         return Array.isArray(list) ? list : []
       } catch (error) {
-        return (
-          <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            <TrendsNavigation
-              activeSection={activeSection}
-              onSectionNavigate={handleSectionNavigate}
-            />
-            <EconomicNewsSection />
-      try {
-        const cryptoSymbols = ASSETS_CONFIG.filter(a => a.type === 'crypto').map(a => a.symbol)
-        const forexSymbols = ASSETS_CONFIG.filter(a => a.type === 'forex').map(a => a.symbol)
-        const indicesSymbols = ASSETS_CONFIG.filter(a => a.type === 'indices').map(a => a.symbol)
-        const commoditiesSymbols = ASSETS_CONFIG.filter(a => a.type === 'commodities').map(
-          a => a.symbol
-        )
-
-        const [
-          cryptoResponse,
-          forexResponse,
-          indicesResponse,
-          commoditiesResponse,
-          reportResponse,
-        ] = await Promise.all([
-          fetch(`/api/market-data/crypto?symbols=${cryptoSymbols.join(',')}`),
-          fetch(`/api/market-data/forex?symbols=${forexSymbols.join(',')}`),
-          fetch(`/api/market-data/indices?symbols=${indicesSymbols.join(',')}`),
+        return []
+      }
           fetch(`/api/market-data/commodities?symbols=${commoditiesSymbols.join(',')}`),
           fetch('/api/market-data/live-report'),
         ])
