@@ -12,9 +12,12 @@ export default function EconomicNewsSection() {
   const [news, setNews] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [source, setSource] = useState<'forexfactory' | 'myfxbook'>('forexfactory')
 
   useEffect(() => {
-    fetch('/api/news/forex-factory')
+    setLoading(true)
+    setError(null)
+    fetch(`/api/news/calendar?source=${source}`)
       .then(res => res.json())
       .then(data => {
         setNews(data.news || [])
@@ -24,33 +27,47 @@ export default function EconomicNewsSection() {
         setError('Failed to load news')
         setLoading(false)
       })
-  }, [])
-
-  if (loading) return <div className="p-4">Loading economic news...</div>
-  if (error) return <div className="p-4 text-red-500">{error}</div>
+  }, [source])
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-lg shadow p-4 mt-6">
-      <h2 className="text-lg font-bold mb-2">High-Impact Economic News</h2>
-      <ul className="divide-y divide-gray-200 dark:divide-zinc-700">
-        {news.map((item, idx) => (
-          <li
-            key={idx}
-            className="py-2 flex flex-col md:flex-row md:items-center md:justify-between"
-          >
-            <div>
-              <span className="font-semibold text-blue-600 dark:text-blue-400 mr-2">
-                {item.country}
-              </span>
-              <span className="font-semibold">{item.event}</span>
-              <span className="ml-2 text-xs text-gray-500">({item.impact})</span>
-            </div>
-            <div className="text-xs text-gray-400 mt-1 md:mt-0">
-              {new Date(item.pubDate).toLocaleString()}
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-lg font-bold">High-Impact Economic News</h2>
+        <select
+          className="border rounded px-2 py-1 text-sm dark:bg-zinc-800 dark:text-white"
+          value={source}
+          onChange={e => setSource(e.target.value as 'forexfactory' | 'myfxbook')}
+        >
+          <option value="forexfactory">ForexFactory</option>
+          <option value="myfxbook">MyFXBook</option>
+        </select>
+      </div>
+      {loading ? (
+        <div className="p-4">Loading economic news...</div>
+      ) : error ? (
+        <div className="p-4 text-red-500">{error}</div>
+      ) : (
+        <ul className="divide-y divide-gray-200 dark:divide-zinc-700">
+          {news.map((item, idx) => (
+            <li
+              key={idx}
+              className="py-2 flex flex-col md:flex-row md:items-center md:justify-between"
+            >
+              <div>
+                <span className="font-semibold text-blue-600 dark:text-blue-400 mr-2">
+                  {item.country}
+                </span>
+                <span className="font-semibold">{item.event}</span>
+                <span className="ml-2 text-xs text-gray-500">({item.impact})</span>
+                <span className="ml-2 text-xs text-gray-400">[{item.source || source}]</span>
+              </div>
+              <div className="text-xs text-gray-400 mt-1 md:mt-0">
+                {new Date(item.pubDate).toLocaleString()}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
