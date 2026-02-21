@@ -12,9 +12,11 @@ const TRADINGVIEW_RSI: Record<string, number> = {
   EURUSD: 45,
   // Add more symbols as needed
 }
+
 import AssetDetailModal from '@/components/AssetDetailModal'
 import TrendsNavigation from '@/components/TrendsNavigation'
 import TradeConfirmationDialog from '@/components/TradeConfirmationDialog'
+import EconomicNewsSection from '@/components/EconomicNewsSection'
 
 interface AssetTrend {
   symbol: string
@@ -211,12 +213,13 @@ export default function TrendsPage() {
         const list = await response.json()
         return Array.isArray(list) ? list : []
       } catch (error) {
-        return []
-      }
-    }
-
-    const fetchMarketData = async () => {
-      setIsRefreshing(true)
+        return (
+          <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+            <TrendsNavigation
+              activeSection={activeSection}
+              onSectionNavigate={handleSectionNavigate}
+            />
+            <EconomicNewsSection />
       try {
         const cryptoSymbols = ASSETS_CONFIG.filter(a => a.type === 'crypto').map(a => a.symbol)
         const forexSymbols = ASSETS_CONFIG.filter(a => a.type === 'forex').map(a => a.symbol)
