@@ -216,38 +216,6 @@ export default function TrendsPage() {
         return []
       }
     }
-
-    // ...existing code...
-            const reportPayload = await reportResponse.json()
-            setLiveFailures(Array.isArray(reportPayload?.entries) ? reportPayload.entries : [])
-            setDeploymentInfo(reportPayload?.deployment || null)
-          }
-        } catch {
-          setLiveFailures([])
-          setDeploymentInfo(null)
-        }
-
-        const cryptoData: Record<string, any> = {}
-        const forexData: Record<string, any> = {}
-        const indicesData: Record<string, any> = {}
-        const commoditiesData: Record<string, any> = {}
-
-        cryptoList.forEach((item: any) => {
-          if (item?.symbol) cryptoData[item.symbol] = item
-        })
-        forexList.forEach((item: any) => {
-          if (item?.symbol) forexData[item.symbol] = item
-        })
-        indicesList.forEach((item: any) => {
-          if (item?.symbol) indicesData[item.symbol] = item
-        })
-        commoditiesList.forEach((item: any) => {
-          if (item?.symbol) commoditiesData[item.symbol] = item
-        })
-
-        let assetsList: (AssetTrend | undefined)[] = await Promise.all(
-          ASSETS_CONFIG.map(async config => {
-            let data: AssetTrend | null = null
             let closes: number[] | null = null
             let atrValue: number = 0
             let volumeValue: number = 0
