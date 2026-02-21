@@ -215,19 +215,9 @@ export default function TrendsPage() {
       } catch (error) {
         return []
       }
-          fetch(`/api/market-data/commodities?symbols=${commoditiesSymbols.join(',')}`),
-          fetch('/api/market-data/live-report'),
-        ])
+    }
 
-        const [cryptoList, forexList, indicesList, commoditiesList] = await Promise.all([
-          parseDataList(cryptoResponse),
-          parseDataList(forexResponse),
-          parseDataList(indicesResponse),
-          parseDataList(commoditiesResponse),
-        ])
-
-        try {
-          if (reportResponse.ok) {
+    // ...existing code...
             const reportPayload = await reportResponse.json()
             setLiveFailures(Array.isArray(reportPayload?.entries) ? reportPayload.entries : [])
             setDeploymentInfo(reportPayload?.deployment || null)
