@@ -16,6 +16,38 @@ export default function CalendarPage() {
           Real-time macro events that can impact volatility.
         </p>
         <EconomicCalendarWidget />
+        {/* myfxbook.com Economic Calendar Widget - Start */}
+        <div style={{ width: '100%', height: '500px', marginTop: '24px' }}>
+          <iframe
+            src="https://widget.myfxbook.com/widget/calendar.html?lang=en&impacts=0,1,2,3&symbols=AUD,CAD,CHF,CNY,EUR,GBP,JPY,NZD,USD"
+            style={{ border: 0, width: '100%', height: '100%' }}
+            title="Myfxbook Economic Calendar"
+            allowFullScreen
+          />
+          <div style={{ marginTop: '10px' }}>
+            <div
+              style={{
+                width: 'fit-content',
+                margin: 'auto',
+                fontFamily: 'roboto,sans-serif',
+                fontSize: '13px',
+                color: '#666666',
+              }}
+            >
+              <a
+                href="https://www.myfxbook.com/forex-economic-calendar?utm_source=widget13&utm_medium=link&utm_campaign=copyright"
+                title="Economic Calendar"
+                className="myfxbookLink"
+                target="_blank"
+                rel="noopener"
+              >
+                <b style={{ color: '#666666' }}>Economic Calendar</b>
+              </a>
+              by Myfxbook.com
+            </div>
+          </div>
+        </div>
+        {/* myfxbook.com Economic Calendar Widget - End */}
       </section>
       <LearningCalendar />
     </div>
