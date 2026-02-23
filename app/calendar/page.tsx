@@ -1,5 +1,5 @@
 import LearningCalendar from '@/components/LearningCalendar'
-import { EconomicCalendarWidget } from '@/components/TradingViewWidgets'
+
 
 export const metadata = {
   title: '30-Day Learning Calendar | Supreme Market Institute',
@@ -15,8 +15,7 @@ export default function CalendarPage() {
         <p className="text-sm text-gray-400 mb-4">
           Real-time macro events that can impact volatility.
         </p>
-        <EconomicCalendarWidget />
-        {/* myfxbook.com Economic Calendar Widget - Start */}
+        {/* Myfxbook.com Economic Calendar Widget ONLY */}
         <div style={{ width: '100%', height: '500px', marginTop: '24px' }}>
           <iframe
             src="https://widget.myfxbook.com/widget/calendar.html?lang=en&impacts=0,1,2,3&symbols=AUD,CAD,CHF,CNY,EUR,GBP,JPY,NZD,USD"
@@ -47,7 +46,6 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
-        {/* myfxbook.com Economic Calendar Widget - End */}
       </section>
       <LearningCalendar />
     </div>
