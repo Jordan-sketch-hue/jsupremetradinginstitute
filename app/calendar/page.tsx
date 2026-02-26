@@ -10,7 +10,17 @@ import React, { useState } from 'react'
 
 export default function CalendarPage() {
   const [impacts, setImpacts] = useState<string[]>(['0', '1', '2', '3'])
-  const [symbols, setSymbols] = useState<string[]>(['AUD', 'CAD', 'CHF', 'CNY', 'EUR', 'GBP', 'JPY', 'NZD', 'USD'])
+  const [symbols, setSymbols] = useState<string[]>([
+    'AUD',
+    'CAD',
+    'CHF',
+    'CNY',
+    'EUR',
+    'GBP',
+    'JPY',
+    'NZD',
+    'USD',
+  ])
 
   const impactOptions = [
     { value: '0', label: 'None' },
@@ -21,14 +31,10 @@ export default function CalendarPage() {
   const symbolOptions = ['AUD', 'CAD', 'CHF', 'CNY', 'EUR', 'GBP', 'JPY', 'NZD', 'USD']
 
   const handleImpactChange = (value: string) => {
-    setImpacts(prev =>
-      prev.includes(value) ? prev.filter(i => i !== value) : [...prev, value]
-    )
+    setImpacts(prev => (prev.includes(value) ? prev.filter(i => i !== value) : [...prev, value]))
   }
   const handleSymbolChange = (value: string) => {
-    setSymbols(prev =>
-      prev.includes(value) ? prev.filter(s => s !== value) : [...prev, value]
-    )
+    setSymbols(prev => (prev.includes(value) ? prev.filter(s => s !== value) : [...prev, value]))
   }
 
   const iframeSrc = `https://widget.myfxbook.com/widget/calendar.html?lang=en&impacts=${impacts.join(',')}&symbols=${symbols.join(',')}`
@@ -38,7 +44,8 @@ export default function CalendarPage() {
       <section className="bg-matte-black/50 border border-royal-green/20 rounded-2xl p-6">
         <h2 className="text-2xl font-bold text-white mb-2">Live Economic Calendar</h2>
         <p className="text-sm text-gray-400 mb-4">
-          Real-time macro events that can impact volatility. Use the filters below to customize the calendar.
+          Real-time macro events that can impact volatility. Use the filters below to customize the
+          calendar.
         </p>
         {/* Filter Controls */}
         <div className="flex flex-wrap gap-4 mb-4">
@@ -48,6 +55,17 @@ export default function CalendarPage() {
               {impactOptions.map(opt => (
                 <label key={opt.value} className="inline-flex items-center gap-1 text-xs">
                   <input
+
+      const [appliedImpacts, setAppliedImpacts] = useState<string[]>(['0', '1', '2', '3'])
+      const [appliedSymbols, setAppliedSymbols] = useState<string[]>(['AUD', 'CAD', 'CHF', 'CNY', 'EUR', 'GBP', 'JPY', 'NZD', 'USD'])
+
+      const handleApply = () => {
+        setAppliedImpacts([...impacts])
+        setAppliedSymbols([...symbols])
+      }
+
+      const iframeSrc = `https://widget.myfxbook.com/widget/calendar.html?lang=en&impacts=${appliedImpacts.join(',')}&symbols=${appliedSymbols.join(',')}`
+
                     type="checkbox"
                     checked={impacts.includes(opt.value)}
                     onChange={() => handleImpactChange(opt.value)}
@@ -57,7 +75,7 @@ export default function CalendarPage() {
                 </label>
               ))}
             </div>
-          </div>
+            <div className="flex flex-wrap gap-4 mb-4 items-end">
           <div>
             <div className="text-xs text-slate-400 mb-1">Currency</div>
             <div className="flex gap-2 flex-wrap">
@@ -90,6 +108,12 @@ export default function CalendarPage() {
             className="mt-2 text-center"
             style={{ fontFamily: 'roboto,sans-serif', fontSize: 13, color: '#666666' }}
           >
+              <button
+                onClick={handleApply}
+                className="ml-2 px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow transition-colors"
+              >
+                Apply Filters
+              </button>
             <a
               href="https://www.myfxbook.com/forex-economic-calendar?utm_source=widget13&utm_medium=link&utm_campaign=copyright"
               title="Economic Calendar"
