@@ -92,14 +92,9 @@ export default function TrendsNavigation({ onNavigate, activeSection }: TrendsNa
       window.open('/bot-dashboard', '_blank')
       return
     }
-    const element = document.getElementById(sectionId)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      onNavigate(sectionId)
-    } else {
-      // Always call onNavigate to update state even if section not found
-      onNavigate(sectionId)
-    }
+    // Use anchor navigation for all sections except dashboard
+    window.location.hash = `#${sectionId}`
+    onNavigate(sectionId)
   }
 
   return (

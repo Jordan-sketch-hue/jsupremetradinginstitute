@@ -1319,10 +1319,49 @@ export default function TrendsPage() {
             ))}
           </div>
 
+          {/* Forex Section */}
+          <div id="forex" className="mt-6">
+            {renderAssetSection(
+              'forex',
+              'Forex Pairs',
+              displayedAssets.filter(a => a.type === 'forex')
+            )}
+          </div>
+
+          {/* Crypto Section */}
+          <div id="crypto" className="mt-6">
+            {renderAssetSection(
+              'crypto',
+              'Crypto',
+              displayedAssets.filter(a => a.type === 'crypto')
+            )}
+          </div>
+
+          {/* Indices Section */}
+          <div id="indices" className="mt-6">
+            {renderAssetSection(
+              'indices',
+              'Indices',
+              displayedAssets.filter(a => a.type === 'indices')
+            )}
+          </div>
+
+          {/* Commodities Section */}
+          <div id="commodities" className="mt-6">
+            {renderAssetSection(
+              'commodities',
+              'Commodities',
+              displayedAssets.filter(a => a.type === 'commodities')
+            )}
+          </div>
+
           {/* All assets sorted by confidence, with filters applied */}
-          <div className="mt-6">
+          <div id="all" className="mt-6">
             {renderAssetSection('all', 'All Assets (Sorted by Confidence)', allSortedAssets)}
           </div>
+
+          {/* Dashboard Section (anchor only, for navigation) */}
+          <div id="dashboard" />
 
           <AnimatePresence>
             {selectedAsset && (
