@@ -26,33 +26,30 @@ export default function TestimonialsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-matte-black via-royal-green/5 to-matte-black py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-4">Success Stories</h1>
-        <p className="text-gray-400 mb-10">
-          Real learning milestones from traders progressing through the program. Results vary by
-          effort, discipline, and adherence to risk management.
-        </p>
-
-        <div className="space-y-6">
+    <main className="min-h-screen bg-gradient-to-b from-matte-black via-royal-green/5 to-matte-black">
+      <div className="section-container max-w-4xl mx-auto">
+        <header className="mb-8 text-center">
+          <h1 className="text-4xl font-playfair font-bold text-gradient mb-4">Success Stories</h1>
+          <p className="text-lg text-gray-400 mb-10 font-inter">
+            Real learning milestones from traders progressing through the program. Results vary by
+            effort, discipline, and adherence to risk management.
+          </p>
+        </header>
+        <section className="space-y-6">
           {stories.map(story => (
-            <div
-              key={story.name}
-              className="bg-matte-black/50 border border-royal-green/30 rounded-xl p-6"
-            >
-              <div className="text-white font-semibold text-lg mb-1">{story.title}</div>
-              <div className="text-gray-400 text-sm mb-3">{story.name}</div>
-              <p className="text-gray-300">{story.quote}</p>
-            </div>
+            <article key={story.name} className="glass-effect rounded-xl p-6">
+              <h2 className="text-white font-semibold text-lg mb-1 font-playfair">{story.title}</h2>
+              <div className="text-gray-400 text-sm mb-3 font-inter">{story.name}</div>
+              <p className="text-gray-300 font-inter">{story.quote}</p>
+            </article>
           ))}
-        </div>
-
-        <div className="mt-10">
-          <a href="/learning-path" className="text-royal-emerald font-semibold">
+        </section>
+        <footer className="mt-10 text-center">
+          <a href="/learning-path" className="btn-primary">
             Start the Learning Path
           </a>
-        </div>
+        </footer>
       </div>
-    </div>
+    </main>
   )
 }
