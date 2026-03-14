@@ -245,7 +245,10 @@ export default function TrendsPage() {
                   )}
                   {asset.takeProfitTargets && asset.takeProfitTargets.length > 0 && (
                     <span className="bg-slate-800 px-2 py-1 rounded text-xs text-yellow-400">
-                      TP: <span className="font-bold">{asset.takeProfitTargets.map(tp => tp.label + ' ' + tp.value).join(' • ')}</span>
+                      TP:{' '}
+                      <span className="font-bold">
+                        {asset.takeProfitTargets.map(tp => tp.label + ' ' + tp.value).join(' • ')}
+                      </span>
                     </span>
                   )}
                 </div>
@@ -259,11 +262,17 @@ export default function TrendsPage() {
                         ? 'Likely Down'
                         : 'Sideways/Uncertain'}
                   </span>
-                  <span className="text-slate-400">|
-                    Confidence: <span className="font-bold text-emerald-400">{typeof asset.confidence === 'number' ? `${asset.confidence}%` : '—'}</span>
+                  <span className="text-slate-400">
+                    | Confidence:{' '}
+                    <span className="font-bold text-emerald-400">
+                      {typeof asset.confidence === 'number' ? `${asset.confidence}%` : '—'}
+                    </span>
                   </span>
-                  <span className="text-slate-400">|
-                    Est. Time: <span className="font-bold text-blue-300">{asset.trend === 'BULLISH' || asset.trend === 'BEARISH' ? '1-2 days' : '—'}</span>
+                  <span className="text-slate-400">
+                    | Est. Time:{' '}
+                    <span className="font-bold text-blue-300">
+                      {asset.trend === 'BULLISH' || asset.trend === 'BEARISH' ? '1-2 days' : '—'}
+                    </span>
                   </span>
                 </div>
                 <button

@@ -43,15 +43,15 @@ export default function OrderBlockChart({
   )
   const [chartMode, setChartMode] = useState<'candles' | 'line'>('candles')
   const [obRangeMode, setObRangeMode] = useState<'recent' | 'older' | 'all'>('recent')
-  const [showBullishOB, setShowBullishOB] = useState(false)
-  const [showBearishOB, setShowBearishOB] = useState(false)
-  // Overlays are now visible by default
+  // All overlays visible by default
+  const [showBullishOB, setShowBullishOB] = useState(true)
+  const [showBearishOB, setShowBearishOB] = useState(true)
   const [showSupport, setShowSupport] = useState(true)
   const [showResistance, setShowResistance] = useState(true)
   const [showEntryTargets, setShowEntryTargets] = useState(true)
-  const [showStopLoss, setShowStopLoss] = useState(false)
-  const [showCurrentPrice, setShowCurrentPrice] = useState(false)
-  const [showLiquiditySweeps, setShowLiquiditySweeps] = useState(false)
+  const [showStopLoss, setShowStopLoss] = useState(true)
+  const [showCurrentPrice, setShowCurrentPrice] = useState(true)
+  const [showLiquiditySweeps, setShowLiquiditySweeps] = useState(true)
 
   useEffect(() => {
     const handleResize = () => setChartWidth(window.innerWidth - 40)
@@ -674,80 +674,34 @@ export default function OrderBlockChart({
                 <text x={8} y={yEntry - 6} fill="#22c55e" fontSize="13" fontWeight="900">
                   Entry
                 </text>
-                {/* TP as zone if multiple targets */}
-                {takeProfitTargets.length > 1
-                  ? (() => {
-                      const tpPrices = takeProfitTargets.map(tp => tp.price).sort((a, b) => a - b)
-                      const y1 = priceToY(tpPrices[0])
-                      const y2 = priceToY(tpPrices[tpPrices.length - 1])
-                      return (
-                        <g key="tp-zone">
-                          <rect
-                            x="0"
-                            y={Math.min(y1, y2)}
-                            width={chartWidth}
-                            height={Math.abs(y2 - y1)}
-                            fill="rgba(250,204,21,0.13)"
-                          />
-                          <line
-                            x1="0"
-                            y1={y1}
-                            x2={chartWidth}
-                            y2={y1}
-                            stroke="#facc15"
-                            strokeWidth="3"
-                            strokeDasharray="6"
-                            opacity="0.95"
-                          />
-                          <line
-                            x1="0"
-                            y1={y2}
-                            x2={chartWidth}
-                            y2={y2}
-                            stroke="#facc15"
-                            strokeWidth="3"
-                            strokeDasharray="6"
-                            opacity="0.95"
-                          />
-                          <text
-                            x={chartWidth - 90}
-                            y={Math.min(y1, y2) - 6}
-                            fill="#facc15"
-                            fontSize="13"
-                            fontWeight="900"
-                          >
-                            TP Zone
-                          </text>
-                        </g>
-                      )
-                    })()
-                  : takeProfitTargets.map(tp => {
-                      const y = priceToY(tp.price)
-                      return (
-                        <g key={`tp-${tp.label}`}>
-                          <line
-                            x1="0"
-                            y1={y}
-                            x2={chartWidth}
-                            y2={y}
-                            stroke="#facc15"
-                            strokeWidth="3"
-                            strokeDasharray="6"
-                            opacity="0.95"
-                          />
-                          <text
-                            x={chartWidth - 70}
-                            y={y - 6}
-                            fill="#facc15"
-                            fontSize="13"
-                            fontWeight="900"
-                            style={{ textShadow: '0 1px 4px #000' }}
-                          >
-                            TP: {tp.label}
-                          </text>
-                        </g>
-                      )
-                    })}
+                {/* Show all TP points, labeled */}
+                {takeProfitTargets.map((tp, idx) => {
+                  const y = priceToY(tp.price)
+                  return (
+                    <g key={`tp-${tp.label}`}>
+                      <line
+                        x1="0"
+                        y1={y}
+                        x2={chartWidth}
+                        y2={y}
+                        stroke="#facc15"
+                        strokeWidth="3"
+                        strokeDasharray="6"
+                        opacity="0.95"
+                      />
+                      <text
+                        x={chartWidth - 70}
+                        y={y - 6}
+                        fill="#facc15"
+                        fontSize="13"
+                        fontWeight="900"
+                        style={{ textShadow: '0 1px 4px #000' }}
+                      >
+                        TP{idx + 1}: {tp.label}
+                      </text>
+                    </g>
+                  )
+                })}
               </>
             )}
           </svg>
