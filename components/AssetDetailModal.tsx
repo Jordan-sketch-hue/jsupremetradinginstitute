@@ -202,6 +202,9 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
                 </p>
               </div>
             </div>
+            <span className="ml-2 px-2 py-0.5 rounded bg-gradient-to-r from-emerald-600 to-indigo-600 text-xs font-bold text-white flex items-center gap-1">
+              True Chart Analysis<span style={{ fontSize: '0.8em', marginLeft: '2px' }}>™</span>
+            </span>
           </div>
 
           <div className="px-4 md:px-6 pb-4 flex items-center gap-2 flex-wrap">

@@ -3,6 +3,10 @@
 // Yahoo fallback is only used server-side to avoid CORS issues.
 import { NextRequest, NextResponse } from 'next/server'
 import { getHistoricalCandles } from '@/lib/marketDataProvider'
+import { detectOrderBlocks } from '@/lib/orderBlockDetection'
+import { detectAccumulationRanges } from '@/lib/accumulationDetection'
+import { detectLiquiditySweeps } from '@/lib/liquiditySweepDetection'
+import { analyzeHighTimeFrameZones } from '@/lib/highTimeFrameAnalysis'
 
 interface Candle {
   timestamp: number
@@ -39,8 +43,10 @@ export async function GET(request: NextRequest) {
   const rawSymbol = searchParams.get('symbol')
   const symbol = rawSymbol?.toUpperCase()
   const normalizedSymbol = symbol ? symbol.replace(/[^A-Z0-9/\-]/g, '') : ''
+
   const assetType = searchParams.get('type') || 'forex'
   const timeframe = (searchParams.get('timeframe') || '1h').toLowerCase()
+  const strategy = (searchParams.get('strategy') || 'order-blocks-accumulation').toLowerCase()
 
   if (!symbol) {
     return NextResponse.json({ error: 'Symbol required' }, { status: 400 })
@@ -71,12 +77,43 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Prepare overlays/analysis for chart
+    const overlays: any = {}
+    const slicedCandles = candles.slice(-candleLimit)
+
+    // Order Block detection
+    if (strategy === 'order-blocks' || strategy === 'order-blocks-accumulation') {
+      overlays.orderBlocks = detectOrderBlocks(slicedCandles)
+    }
+
+    // Accumulation range detection
+    if (strategy === 'accumulation' || strategy === 'order-blocks-accumulation') {
+      overlays.accumulationRanges = detectAccumulationRanges(slicedCandles)
+    }
+
+    // Liquidity sweeps (always run)
+    overlays.liquiditySweeps = detectLiquiditySweeps(slicedCandles)
+
+    // High Time Frame analysis (run for 4H and 1D)
+    // For demo, fetch 4H and 1D candles and analyze
+    let htfZones = []
+    try {
+      const htfCandles: any = {}
+      for (const tf of ['4h', '1d']) {
+        const htf = await getHistoricalCandles(normalizedSymbol, assetType, tf)
+        if (htf && htf.candles) htfCandles[tf] = htf.candles.slice(-100)
+      }
+      htfZones = analyzeHighTimeFrameZones(htfCandles)
+    } catch {}
+    overlays.htfZones = htfZones
+
     return NextResponse.json({
       symbol,
-      candles: candles.slice(-candleLimit),
-      count: candles.slice(-candleLimit).length,
+      candles: slicedCandles,
+      count: slicedCandles.length,
       timeframe,
       dataSource,
+      overlays,
       timestamp: Date.now(),
     })
   } catch (error) {

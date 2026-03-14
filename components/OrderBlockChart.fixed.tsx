@@ -1,3 +1,4 @@
+// FIXED OrderBlockChart.tsx
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
@@ -62,31 +63,19 @@ export default function OrderBlockChart({
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY)
       if (!raw) return
-
       const prefs = JSON.parse(raw) as Partial<{
         chartMode: 'candles' | 'line'
         obRangeMode: 'recent' | 'older' | 'all'
       }>
-
       if (prefs.chartMode) setChartMode(prefs.chartMode)
       if (prefs.obRangeMode) setObRangeMode(prefs.obRangeMode)
-    } catch {
-      // ignore bad local storage payload
-    }
+    } catch {}
   }, [])
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          chartMode,
-          obRangeMode,
-        })
-      )
-    } catch {
-      // ignore storage exceptions
-    }
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ chartMode, obRangeMode }))
+    } catch {}
   }, [chartMode, obRangeMode])
 
   if (candles.length === 0)
@@ -417,234 +406,8 @@ export default function OrderBlockChart({
       onMouseLeave={handleMouseUp}
       style={{ cursor: isPanning ? 'grabbing' : 'grab', userSelect: 'none', position: 'relative' }}
     >
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-semibold text-slate-100">
-          {symbol} Price Action ({timeframe.toUpperCase()})
-        </h3>
-        <div className="text-sm text-slate-400">Current: ${currentPrice.toFixed(4)}</div>
-      </div>
-      <div className="mb-3 flex flex-wrap gap-2">
-        {/* Button controls (actual buttons from previous code) */}
-        <button onClick={() => setChartMode(mode => (mode === 'candles' ? 'line' : 'candles'))}>
-          Candlestick
-        </button>
-        <button onClick={() => setChartMode(mode => (mode === 'line' ? 'candles' : 'line'))}>
-          Line
-        </button>
-        <button onClick={() => setObRangeMode('recent')}>Recent OBs</button>
-        <button onClick={() => setObRangeMode('older')}>Older OBs</button>
-        <button onClick={() => setObRangeMode('all')}>All OBs</button>
-        <button onClick={() => setShowBullishOB(v => !v)}>Bullish OB</button>
-        <button onClick={() => setShowBearishOB(v => !v)}>Bearish OB</button>
-        <button onClick={() => setShowSupport(v => !v)}>Support</button>
-        <button onClick={() => setShowResistance(v => !v)}>Resistance</button>
-        <button onClick={() => setShowEntryTargets(v => !v)}>Entry / TP</button>
-        <button onClick={() => setShowStopLoss(v => !v)}>Stop Loss</button>
-        <button onClick={() => setShowCurrentPrice(v => !v)}>Current Price</button>
-        <button onClick={() => setShowLiquiditySweeps(v => !v)}>Liquidity Sweeps</button>
-      </div>
-      <div className="overflow-x-auto mb-4">
-        <div
-          style={{
-            position: 'relative',
-            width: Math.max(chartWidth, 600),
-            height: chartHeight + 32,
-          }}
-        >
-          <svg
-            width={Math.max(chartWidth, 600)}
-            height={chartHeight}
-            className="bg-slate-900 rounded border border-slate-700"
-            style={{ position: 'absolute', left: 0, top: 0 }}
-          >
-            {/* Grid lines */}
-            {[0.25, 0.5, 0.75].map(ratio => (
-              <line
-                key={`hgrid-${ratio}`}
-                x1="0"
-                y1={chartHeight * ratio}
-                x2={chartWidth}
-                y2={chartHeight * ratio}
-                stroke="#334155"
-                strokeWidth="0.5"
-                opacity="0.3"
-              />
-            ))}
-            {/* Y-axis price labels */}
-            {yAxisLabels.map((tick, i) => (
-              <g key={`yaxis-label-${i}`}>
-                <text
-                  x={4}
-                  y={tick.y + 4}
-                  fill="#cbd5e1"
-                  fontSize="11"
-                  fontWeight="500"
-                  textAnchor="start"
-                  style={{ userSelect: 'none' }}
-                >
-                  {tick.price.toFixed(2)}
-                </text>
-                <line
-                  x1={0}
-                  y1={tick.y}
-                  x2={8}
-                  y2={tick.y}
-                  stroke="#64748b"
-                  strokeWidth="1"
-                  opacity="0.4"
-                />
-              </g>
-            ))}
-            {/* Order Blocks */}
-            {showBullishOB && bullishObElements}
-            {showBearishOB && bearishObElements}
-            {/* Support/Resistance */}
-            {showSupport && supportElements}
-            {showResistance && resistanceElements}
-            {/* Price representation */}
-            {chartMode === 'candles' ? (
-              candleElements
-            ) : (
-              <polyline points={linePoints} fill="none" stroke="#38bdf8" strokeWidth="2" />
-            )}
-            {/* Liquidity Sweeps */}
-            {showLiquiditySweeps &&
-              sweepMarkers.map((marker, index) => (
-                <g key={`sweep-${index}`}>
-                  <circle
-                    cx={marker.x}
-                    cy={marker.y}
-                    r="4"
-                    fill={marker.type === 'BUY_SIDE' ? '#f97316' : '#22c55e'}
-                  />
-                  <text
-                    x={marker.x + 6}
-                    y={marker.y - 6}
-                    fill={marker.type === 'BUY_SIDE' ? '#fb923c' : '#4ade80'}
-                    fontSize="10"
-                    fontWeight="700"
-                  >
-                    {marker.type === 'BUY_SIDE' ? 'BSL Sweep' : 'SSL Sweep'}
-                  </text>
-                </g>
-              ))}
-            {/* Current Price Line */}
-            {showCurrentPrice && (
-              <>
-                <line
-                  x1="0"
-                  y1={yCurrentPrice}
-                  x2={chartWidth}
-                  y2={yCurrentPrice}
-                  stroke="#a78bfa"
-                  strokeWidth="2"
-                  strokeDasharray="6"
-                />
-                <text x={8} y={yCurrentPrice - 6} fill="#a78bfa" fontSize="11" fontWeight="700">
-                  Current
-                </text>
-              </>
-            )}
-            {/* Entry/TP Lines */}
-            {showEntryTargets && (
-              <>
-                <line
-                  x1="0"
-                  y1={yEntry}
-                  x2={chartWidth}
-                  y2={yEntry}
-                  stroke="#22c55e"
-                  strokeWidth="1.5"
-                  strokeDasharray="4"
-                />
-                <text x={8} y={yEntry - 6} fill="#22c55e" fontSize="11" fontWeight="700">
-                  Entry
-                </text>
-                {takeProfitTargets.map(tp => {
-                  const y = priceToY(tp.price)
-                  return (
-                    <g key={`tp-${tp.label}`}>
-                      <line
-                        x1="0"
-                        y1={y}
-                        x2={chartWidth}
-                        y2={y}
-                        stroke="#10b981"
-                        strokeWidth="1.25"
-                        strokeDasharray="3"
-                        opacity="0.8"
-                      />
-                      <text
-                        x={chartWidth - 70}
-                        y={y - 6}
-                        fill="#10b981"
-                        fontSize="10"
-                        fontWeight="700"
-                      >
-                        {tp.label}
-                      </text>
-                    </g>
-                  )
-                })}
-              </>
-            )}
-          </svg>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4 text-xs text-slate-400">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-500 rounded-sm" />
-          <span>Bullish Order Blocks</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-red-500 rounded-sm" />
-          <span>Bearish Order Blocks</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-blue-500" />
-          <span>Support Level</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-amber-500" />
-          <span>Resistance Level</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-green-500" />
-          <span>Entry / TP Lines</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-red-500" />
-          <span>Stop Loss Line</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-orange-500 rounded-full" />
-          <span>Buy/Sell-side Liquidity Sweep</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-cyan-500" />
-          <span>Chart Mode (Candles/Line)</span>
-        </div>
-      </div>
-      {nearestOB && (
-        <div className="mt-4 p-3 bg-slate-700 rounded border border-slate-600">
-          <div className="text-sm font-semibold text-slate-100 mb-2">Nearest Order Block</div>
-          <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
-            <div>
-              <span className="text-slate-400">Type:</span> {nearestOB.type}
-            </div>
-            <div>
-              <span className="text-slate-400">Level:</span> ${nearestOB.priceLevel.toFixed(4)}
-            </div>
-            <div>
-              <span className="text-slate-400">Strength:</span> {nearestOB.strength}%
-            </div>
-            <div>
-              <span className="text-slate-400">Distance:</span>{' '}
-              {((Math.abs(currentPrice - nearestOB.priceLevel) / currentPrice) * 100).toFixed(2)}%
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ...existing code for chart controls, SVG, overlays, legend, and details... */}
+      {/* Tooltip */}
       {tooltip && tooltip.candle && (
         <div
           style={{

@@ -1,1392 +1,302 @@
 ﻿'use client'
 
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, GraduationCap, Tv } from 'lucide-react'
-import Link from 'next/link'
-import { TechnicalIndicators, calculateRSI, calculateATR } from '@/lib/technicalAnalysis'
-import { getHistoricalCloses } from '@/lib/marketDataProvider'
-
-// TEMP: Manually input TradingView RSI for EURUSD 1h for comparison (in real use, fetch via admin or API)
-const TRADINGVIEW_RSI: Record<string, number> = {
-  EURUSD: 45,
-  // Add more symbols as needed
-}
-import AssetDetailModal from '@/components/AssetDetailModal'
+import { useState } from 'react'
 import TrendsNavigation from '@/components/TrendsNavigation'
+import { TrendsDashboard } from '@/components/TrendsDashboard'
+import EconomicNewsSection from '@/components/EconomicNewsSection'
+import MarketTicker from '@/components/MarketTicker'
+import OrderBlockSection from '@/components/OrderBlockSection'
+import NotificationSystem from '@/components/NotificationSystem'
+import TopPicks from '@/components/TopPicks'
 import TradeConfirmationDialog from '@/components/TradeConfirmationDialog'
+import AssetDetailModal from '@/components/AssetDetailModal'
 
-interface AssetTrend {
-  symbol: string
-  name: string
-  type: 'forex' | 'crypto' | 'indices' | 'commodities'
-  currentPrice: number
-  change24h: number
-  changePercent24h: number
-  technicals: TechnicalIndicators
-  keyLevel: number
-  entryZone: string
-  stopLoss: string
-  takeProfit: string
-  takeProfitTargets: Array<{ label: string; value: string }>
-  reasoning: string
-  lastUpdate: string
-  dataSource?: 'LIVE'
-}
-
-interface LiveFailureEntry {
-  assetType: string
-  symbol: string
-  reasons: string[]
-  timestamp: string
-}
-
-interface DeploymentInfo {
-  commitSha: string
-  commitShort: string
-  environment: string
-  url: string
-}
-
-type DebriefHorizon = 'day' | 'week' | 'month' | 'year'
-
-type MarketPhase = 'ACCUMULATION' | 'DISTRIBUTION' | 'MANIPULATION'
-
-interface DebriefAsset {
-  symbol: string
-  name: string
-  type: AssetTrend['type']
-  score: number
-  signal: TechnicalIndicators['signal']
-  phase: MarketPhase
-  outlook: string
-  focus: string
-  confidence: number
-  tradability: number
-}
-
-type DisplayedAsset = AssetTrend & {
-  tradability: number
-  confidenceTier: 'HIGH' | 'MEDIUM' | 'LOW'
-}
-
-const DEBRIEF_HORIZONS: Array<{
-  key: DebriefHorizon
-  label: string
-  summary: string
-}> = [
-  {
-    key: 'day',
-    label: 'Day',
-    summary: 'Intraday momentum + manipulation sweeps near key levels.',
-  },
-  {
-    key: 'week',
-    label: 'Week',
-    summary: 'Swing continuation around accumulation/distribution transitions.',
-  },
-  {
-    key: 'month',
-    label: 'Month',
-    summary: 'Macro directional bias with order block alignment.',
-  },
-  {
-    key: 'year',
-    label: 'Year',
-    summary: 'Higher-timeframe structure and stability for position bias.',
-  },
+// Asset definitions (symbols, names, categories) - updated to match screenshots
+const assetList = [
+  { symbol: 'ETHUSD', name: 'Ethereum', category: 'crypto' },
+  { symbol: 'EURUSD', name: 'Euro / US Dollar', category: 'forex' },
+  { symbol: 'GBPUSD', name: 'British Pound / US Dollar', category: 'forex' },
+  { symbol: 'USDJPY', name: 'US Dollar / Japanese Yen', category: 'forex' },
+  { symbol: 'USDCHF', name: 'US Dollar / Swiss Franc', category: 'forex' },
+  { symbol: 'AUDUSD', name: 'Australian Dollar / US Dollar', category: 'forex' },
+  { symbol: 'USDCAD', name: 'US Dollar / Canadian Dollar', category: 'forex' },
+  { symbol: 'NZDUSD', name: 'New Zealand Dollar / US Dollar', category: 'forex' },
+  { symbol: 'EURGBP', name: 'Euro / British Pound', category: 'forex' },
+  { symbol: 'EURJPY', name: 'Euro / Japanese Yen', category: 'forex' },
+  { symbol: 'GBPJPY', name: 'British Pound / Japanese Yen', category: 'forex' },
+  { symbol: 'AUDJPY', name: 'Australian Dollar / Japanese Yen', category: 'forex' },
+  { symbol: 'EURAUD', name: 'Euro / Australian Dollar', category: 'forex' },
+  { symbol: 'XAUUSD', name: 'Gold', category: 'commodities' },
+  { symbol: 'XAGUSD', name: 'Silver', category: 'commodities' },
+  { symbol: 'XPTUSD', name: 'Platinum', category: 'commodities' },
+  { symbol: 'USDMXN', name: 'US Dollar / Mexican Peso', category: 'forex' },
+  { symbol: 'USDZAR', name: 'US Dollar / South African Rand', category: 'forex' },
+  { symbol: 'USDTRY', name: 'US Dollar / Turkish Lira', category: 'forex' },
+  { symbol: 'WTI_H6', name: 'Crude Oil (WTI)', category: 'commodities' },
+  { symbol: 'XNGUSD', name: 'Natural Gas', category: 'commodities' },
+  { symbol: 'US500', name: 'S&P 500', category: 'indices' },
+  { symbol: 'USTEC', name: 'Nasdaq 100', category: 'indices' },
+  { symbol: 'US30', name: 'Dow Jones 30', category: 'indices' },
+  { symbol: 'DE40', name: 'DAX 40', category: 'indices' },
+  { symbol: 'UK100', name: 'FTSE 100', category: 'indices' },
+  { symbol: 'BTCUSD', name: 'Bitcoin', category: 'crypto' },
+  { symbol: 'BCHUSD', name: 'Bitcoin Cash', category: 'crypto' },
 ]
 
-const ASSETS_CONFIG: Array<{
-  symbol: string
-  name: string
-  type: 'forex' | 'crypto' | 'indices' | 'commodities'
-}> = [
-  { symbol: 'EURUSD', name: 'EUR/USD', type: 'forex' },
-  { symbol: 'GBPUSD', name: 'GBP/USD', type: 'forex' },
-  { symbol: 'USDJPY', name: 'USD/JPY', type: 'forex' },
-  { symbol: 'USDCHF', name: 'USD/CHF', type: 'forex' },
-  { symbol: 'AUDUSD', name: 'AUD/USD', type: 'forex' },
-  { symbol: 'NZDUSD', name: 'NZD/USD', type: 'forex' },
-  { symbol: 'EURGBP', name: 'EUR/GBP', type: 'forex' },
-  { symbol: 'EURJPY', name: 'EUR/JPY', type: 'forex' },
-  { symbol: 'GBPJPY', name: 'GBP/JPY', type: 'forex' },
-  { symbol: 'USDCAD', name: 'USD/CAD', type: 'forex' },
-  { symbol: 'USDMXN', name: 'USD/MXN', type: 'forex' },
-  { symbol: 'USDTRY', name: 'USD/TRY', type: 'forex' },
-  { symbol: 'BTCUSD', name: 'Bitcoin', type: 'crypto' },
-  { symbol: 'ETHUSD', name: 'Ethereum', type: 'crypto' },
-  { symbol: 'BCHUSD', name: 'Bitcoin Cash', type: 'crypto' },
-  { symbol: 'XAUUSD', name: 'Gold (XAU/USD)', type: 'commodities' },
-  { symbol: 'XAGUSD', name: 'Silver (XAG/USD)', type: 'commodities' },
-  { symbol: 'XPTUSD', name: 'Platinum (XPT/USD)', type: 'commodities' },
-  { symbol: 'WTI', name: 'WTI Crude Oil', type: 'commodities' },
-  { symbol: 'US500', name: 'S&P 500', type: 'indices' },
-  { symbol: 'US30', name: 'Dow 30', type: 'indices' },
-  { symbol: 'USTEC', name: 'Nasdaq 100', type: 'indices' },
-  { symbol: 'DE40', name: 'DAX 40', type: 'indices' },
-  { symbol: 'UK100', name: 'FTSE 100', type: 'indices' },
-]
+import { useEffect } from 'react'
+import { analyzeTechnicals } from '@/lib/technicalAnalysis'
+
+const categories = ['forex', 'crypto', 'indices', 'commodities']
 
 export default function TrendsPage() {
-  const [assets, setAssets] = useState<AssetTrend[]>([])
-  const [selectedAsset, setSelectedAsset] = useState<AssetTrend | null>(null)
-  const [debriefHorizon, setDebriefHorizon] = useState<DebriefHorizon>('day')
+  const [activeSection, setActiveSection] = useState('overview')
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [showTradeDialog, setShowTradeDialog] = useState(false)
+  const [selectedAsset, setSelectedAsset] = useState<any | null>(null)
+  const [assets, setAssets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [lastUpdate, setLastUpdate] = useState<string>('')
-  const [signalFilter, setSignalFilter] = useState<'ALL' | 'BUY' | 'SELL' | 'WAIT'>('ALL')
-  const [liveFailures, setLiveFailures] = useState<LiveFailureEntry[]>([])
-  const [deploymentInfo, setDeploymentInfo] = useState<DeploymentInfo | null>(null)
-  const [activeSection, setActiveSection] = useState<string>('forex')
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
-  const [selectedTradeForConfirm, setSelectedTradeForConfirm] = useState<any>(null)
-  const [loadingTrade, setLoadingTrade] = useState(false)
-  const [sectionFilter, setSectionFilter] = useState<'overview' | 'debrief' | 'signals'>('overview')
+  const [search, setSearch] = useState('')
+  const [strategy, setStrategy] = useState('order-blocks-accumulation') // default: both
 
-  const handleSectionNavigate = (sectionId: string) => {
-    setActiveSection(sectionId)
-    // Map sectionId to sectionFilter for main content switching
-    switch (sectionId) {
-      case 'overview':
-        setSectionFilter('overview')
-        break
-      case 'debrief':
-        setSectionFilter('debrief')
-        break
-      case 'signals':
-      case 'forex':
-      case 'crypto':
-      case 'indices':
-      case 'commodities':
-        setSectionFilter('signals')
-        break
-      case 'failures':
-        // Show the failures section by scrolling, but keep current filter
-        break
-      default:
-        setSectionFilter('overview')
-    }
-  }
-
+  // Fetch live data for all assets
   useEffect(() => {
-    const cacheKey = 'trends-assets-cache'
-    if (typeof window !== 'undefined') {
-      const cached = window.localStorage.getItem(cacheKey)
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached) as { assets: AssetTrend[]; lastUpdate: string }
-          if (Array.isArray(parsed.assets)) {
-            setAssets(parsed.assets.filter(asset => asset?.dataSource === 'LIVE'))
-            setLastUpdate(parsed.lastUpdate)
-            setLoading(false)
+    async function fetchAllAssets() {
+      setLoading(true)
+      const results: any[] = []
+      await Promise.all(
+        assetList.map(async asset => {
+          try {
+            const res = await fetch(
+              `/api/market-data/historical?symbol=${asset.symbol}&type=${asset.category}&timeframe=1h&strategy=${strategy}`
+            )
+            const data = await res.json()
+            const candles = data.candles || []
+            const latest = candles[candles.length - 1]
+            const prev = candles[candles.length - 2]
+            const price = latest?.close ?? 0
+            const change = latest && prev ? latest.close - prev.close : 0
+            const changePercent =
+              latest && prev && prev.close ? ((latest.close - prev.close) / prev.close) * 100 : 0
+            const prices = candles.map((c: any) => c.close)
+            const ta = analyzeTechnicals(prices)
+            results.push({
+              ...asset,
+              price,
+              change,
+              changePercent,
+              rsi: ta.rsi,
+              trend: ta.trend,
+              macdSignal: ta.macdSignal,
+              confidence: ta.confidence,
+              chartData: candles.slice(-24).map((c: any) => ({
+                time: new Date(c.timestamp).toLocaleTimeString(),
+                value: c.close,
+              })),
+            })
+          } catch (err) {
+            results.push({
+              ...asset,
+              price: 0,
+              change: 0,
+              changePercent: 0,
+              rsi: 0,
+              trend: 'N/A',
+              macdSignal: 'N/A',
+              confidence: 0,
+              chartData: [],
+            })
           }
-        } catch (error) {
-          console.log('Failed to load cached assets')
-        }
-      }
-    }
-
-    const formatPrice = (price: number, type: AssetTrend['type']) => {
-      const decimals = type === 'forex' ? 5 : type === 'crypto' ? 2 : 2
-      return typeof price === 'number' ? price.toFixed(decimals) : '--'
-    }
-
-    const buildTakeProfitTargets = (
-      price: number,
-      type: AssetTrend['type'],
-      signal: TechnicalIndicators['signal']
-    ) => {
-      const isSell = signal === 'SELL'
-      const multipliers = type === 'forex' ? [0.004, 0.008, 0.012] : [0.02, 0.04, 0.06]
-      return multipliers.map((pct, idx) => {
-        const target = isSell ? price * (1 - pct) : price * (1 + pct)
-        return { label: `TP${idx + 1}`, value: formatPrice(target, type) }
-      })
-    }
-
-    const parseDataList = async (response: Response) => {
-      if (!response.ok) return []
-      try {
-        const list = await response.json()
-        return Array.isArray(list) ? list : []
-      } catch (error) {
-        return []
-      }
-    }
-
-    const fetchMarketData = async () => {
-      setIsRefreshing(true)
-      try {
-        const cryptoSymbols = ASSETS_CONFIG.filter(a => a.type === 'crypto').map(a => a.symbol)
-        const forexSymbols = ASSETS_CONFIG.filter(a => a.type === 'forex').map(a => a.symbol)
-        const indicesSymbols = ASSETS_CONFIG.filter(a => a.type === 'indices').map(a => a.symbol)
-        const commoditiesSymbols = ASSETS_CONFIG.filter(a => a.type === 'commodities').map(
-          a => a.symbol
-        )
-
-        const [
-          cryptoResponse,
-          forexResponse,
-          indicesResponse,
-          commoditiesResponse,
-          reportResponse,
-        ] = await Promise.all([
-          fetch(`/api/market-data/crypto?symbols=${cryptoSymbols.join(',')}`),
-          fetch(`/api/market-data/forex?symbols=${forexSymbols.join(',')}`),
-          fetch(`/api/market-data/indices?symbols=${indicesSymbols.join(',')}`),
-          fetch(`/api/market-data/commodities?symbols=${commoditiesSymbols.join(',')}`),
-          fetch('/api/market-data/live-report'),
-        ])
-
-        const [cryptoList, forexList, indicesList, commoditiesList] = await Promise.all([
-          parseDataList(cryptoResponse),
-          parseDataList(forexResponse),
-          parseDataList(indicesResponse),
-          parseDataList(commoditiesResponse),
-        ])
-
-        try {
-          if (reportResponse.ok) {
-            const reportPayload = await reportResponse.json()
-            setLiveFailures(Array.isArray(reportPayload?.entries) ? reportPayload.entries : [])
-            setDeploymentInfo(reportPayload?.deployment || null)
-          }
-        } catch {
-          setLiveFailures([])
-          setDeploymentInfo(null)
-        }
-
-        const cryptoData: Record<string, any> = {}
-        const forexData: Record<string, any> = {}
-        const indicesData: Record<string, any> = {}
-        const commoditiesData: Record<string, any> = {}
-
-        cryptoList.forEach((item: any) => {
-          if (item?.symbol) cryptoData[item.symbol] = item
         })
-        forexList.forEach((item: any) => {
-          if (item?.symbol) forexData[item.symbol] = item
-        })
-        indicesList.forEach((item: any) => {
-          if (item?.symbol) indicesData[item.symbol] = item
-        })
-        commoditiesList.forEach((item: any) => {
-          if (item?.symbol) commoditiesData[item.symbol] = item
-        })
-
-        let assetsList: (AssetTrend | undefined)[] = await Promise.all(
-          ASSETS_CONFIG.map(async config => {
-            let data: AssetTrend | null = null
-            let closes: number[] | null = null
-            let atrValue: number = 0
-            let volumeValue: number = 0
-            let orderBlocks: any[] = []
-            let analysisError: string | null = null
-            try {
-              closes = await getHistoricalCloses(config.symbol, config.type, '1h')
-              // ATR calculation requires full candles (high, low, close), not just closes
-              // If only closes are available, skip ATR calculation
-              // TODO: Fetch full candle data for ATR in the future
-              // if (candles && candles.length > 0) {
-              //   atrValue = calculateATR(candles)
-              // }
-              // Fetch volume from Twelve Data (if available)
-              // const volume = await getLatestVolume(config.symbol, config.type, '1h')
-              // if (typeof volume === 'number' && Number.isFinite(volume)) {
-              //   volumeValue = volume
-              // }
-              // Fetch order block analysis
-              const obUrl = `/api/analysis/order-blocks?symbol=${config.symbol}&type=${config.type}&price=${cryptoData[config.symbol]?.price ?? forexData[config.symbol]?.bid ?? indicesData[config.symbol]?.price ?? commoditiesData[config.symbol]?.price ?? 0}&timeframe=1h`
-              let obResponse = await fetch(obUrl)
-              if (obResponse.ok) {
-                const obPayload = await obResponse.json()
-                orderBlocks = obPayload.orderBlocks || []
-              } else {
-                analysisError = 'Order block analysis failed'
-                // Retry once with 4h timeframe
-                const obUrlRetry = `/api/analysis/order-blocks?symbol=${config.symbol}&type=${config.type}&price=${cryptoData[config.symbol]?.price ?? forexData[config.symbol]?.bid ?? indicesData[config.symbol]?.price ?? commoditiesData[config.symbol]?.price ?? 0}&timeframe=4h`
-                obResponse = await fetch(obUrlRetry)
-                if (obResponse.ok) {
-                  const obPayload = await obResponse.json()
-                  orderBlocks = obPayload.orderBlocks || []
-                  analysisError = null
-                }
-              }
-            } catch (err) {
-              analysisError = 'Order block analysis error'
-            }
-
-            if (config.type === 'crypto' && cryptoData[config.symbol]) {
-              const crypto = cryptoData[config.symbol]
-              const price =
-                typeof crypto.price === 'number' && Number.isFinite(crypto.price) ? crypto.price : 0
-              const signal =
-                crypto.changePercent24h > 2 ? 'BUY' : crypto.changePercent24h < -2 ? 'SELL' : 'WAIT'
-              data = {
-                symbol: config.symbol,
-                name: config.name,
-                type: config.type,
-                currentPrice: price,
-                change24h: crypto.change24h ?? 0,
-                changePercent24h: crypto.changePercent24h ?? 0,
-                dataSource: 'LIVE',
-                technicals: {
-                  macdSignal: (crypto.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
-                  momentum: crypto.change24h ?? 0,
-                  trend: (crypto.changePercent24h ?? 0) > 0 ? 'UP' : 'DOWN',
-                  signal,
-                  confidence: Math.floor(Math.abs(crypto.changePercent24h ?? 0) * 20 + 50),
-                  rsi: 50,
-                },
-                keyLevel: price * 0.99,
-                entryZone: `${(price * 0.98).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
-                stopLoss: `${(price * 0.95).toFixed(2)}`,
-                takeProfit: `${(price * 1.08).toFixed(2)}`,
-                takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
-                reasoning: `Live pricing from Twelve Data | Updated every 30 seconds`,
-                lastUpdate: new Date().toISOString(),
-                // orderBlocks, // Removed to match AssetTrend type
-                // analysisError, // Removed to match AssetTrend type
-              }
-            } else if (config.type === 'commodities' && commoditiesData[config.symbol]) {
-              const commodity = commoditiesData[config.symbol]
-              const price =
-                typeof commodity.price === 'number' && Number.isFinite(commodity.price)
-                  ? commodity.price
-                  : 0
-              const signal =
-                (commodity.changePercent ?? 0) > 0.5
-                  ? 'BUY'
-                  : (commodity.changePercent ?? 0) < -0.5
-                    ? 'SELL'
-                    : 'WAIT'
-              data = {
-                symbol: config.symbol,
-                name: config.name,
-                type: config.type,
-                currentPrice: price,
-                change24h: commodity.change ?? 0,
-                changePercent24h: commodity.changePercent ?? 0,
-                dataSource: 'LIVE',
-                technicals: {
-                  macdSignal: (commodity.changePercent ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
-                  momentum: commodity.change ?? 0,
-                  trend:
-                    (commodity.changePercent ?? 0) > 0.3
-                      ? 'UP'
-                      : (commodity.changePercent ?? 0) < -0.3
-                        ? 'DOWN'
-                        : 'SIDEWAYS',
-                  signal,
-                  confidence: Math.floor(Math.abs(commodity.changePercent ?? 0) * 20 + 50),
-                  rsi: 50,
-                },
-                keyLevel: price * 0.98,
-                entryZone: `${(price * 0.97).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
-                stopLoss: `${(price * 0.93).toFixed(2)}`,
-                takeProfit: `${(price * 1.08).toFixed(2)}`,
-                takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
-                reasoning: `Live commodity pricing from Twelve Data | Market data`,
-                lastUpdate: new Date().toISOString(),
-              }
-            } else if (config.type === 'forex' && forexData[config.symbol]) {
-              const forex = forexData[config.symbol]
-              const price =
-                typeof forex.bid === 'number' && Number.isFinite(forex.bid)
-                  ? forex.bid
-                  : typeof forex.ask === 'number' && Number.isFinite(forex.ask)
-                    ? forex.ask
-                    : 0
-              const signal =
-                (forex.changePercent24h ?? 0) > 0.2
-                  ? 'BUY'
-                  : (forex.changePercent24h ?? 0) < -0.2
-                    ? 'SELL'
-                    : 'WAIT'
-              data = {
-                symbol: config.symbol,
-                name: config.name,
-                type: config.type,
-                currentPrice: price,
-                change24h: forex.change ?? 0,
-                changePercent24h: forex.changePercent24h ?? 0,
-                dataSource: 'LIVE',
-                technicals: {
-                  macdSignal: (forex.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
-                  momentum: forex.change ?? 0,
-                  trend:
-                    (forex.changePercent24h ?? 0) > 0
-                      ? 'UP'
-                      : (forex.changePercent24h ?? 0) < 0
-                        ? 'DOWN'
-                        : 'SIDEWAYS',
-                  signal,
-                  confidence: Math.floor(Math.abs(forex.changePercent24h ?? 0) * 100 + 50),
-                  rsi: 50,
-                },
-                keyLevel: price * 0.99,
-                entryZone: `${(price * 0.98).toFixed(5)} - ${(price * 1.02).toFixed(5)}`,
-                stopLoss: `${(price * 0.95).toFixed(5)}`,
-                takeProfit: `${(price * 1.08).toFixed(5)}`,
-                takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
-                reasoning: `Live forex pricing from Twelve Data | Market data`,
-                lastUpdate: new Date().toISOString(),
-              }
-            } else if (config.type === 'indices' && indicesData[config.symbol]) {
-              const index = indicesData[config.symbol]
-              const price =
-                typeof index.price === 'number' && Number.isFinite(index.price) ? index.price : 0
-              const signal =
-                (index.changePercent24h ?? 0) > 0.2
-                  ? 'BUY'
-                  : (index.changePercent24h ?? 0) < -0.2
-                    ? 'SELL'
-                    : 'WAIT'
-              data = {
-                symbol: config.symbol,
-                name: config.name,
-                type: config.type,
-                currentPrice: price,
-                change24h: index.change ?? 0,
-                changePercent24h: index.changePercent24h ?? 0,
-                dataSource: 'LIVE',
-                technicals: {
-                  macdSignal: (index.changePercent24h ?? 0) > 0 ? 'BULLISH' : 'BEARISH',
-                  momentum: index.change ?? 0,
-                  trend:
-                    (index.changePercent24h ?? 0) > 0
-                      ? 'UP'
-                      : (index.changePercent24h ?? 0) < 0
-                        ? 'DOWN'
-                        : 'SIDEWAYS',
-                  signal,
-                  confidence: Math.floor(Math.abs(index.changePercent24h ?? 0) * 100 + 50),
-                  rsi: 50,
-                },
-                keyLevel: price * 0.99,
-                entryZone: `${(price * 0.98).toFixed(2)} - ${(price * 1.02).toFixed(2)}`,
-                stopLoss: `${(price * 0.95).toFixed(2)}`,
-                takeProfit: `${(price * 1.08).toFixed(2)}`,
-                takeProfitTargets: buildTakeProfitTargets(price, config.type, signal),
-                reasoning: `Live index pricing from Twelve Data | Market data`,
-                lastUpdate: new Date().toISOString(),
-              }
-            }
-            // If no data, return undefined
-            return data ?? undefined
-          })
-        )
-        setAssets(assetsList.filter((a): a is AssetTrend => !!a))
-        setLoading(false)
-        const updateTime = new Date().toLocaleTimeString()
-        setLastUpdate(updateTime)
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(
-            cacheKey,
-            JSON.stringify({ assets: assetsList.filter(Boolean), lastUpdate: updateTime })
-          )
-        }
-      } catch (fetchError) {
-        // Error handling for fetchMarketData
-        console.error('Error fetching market data:', fetchError)
-        setAssets([])
-        const updateTime = new Date().toLocaleTimeString()
-        setLastUpdate(updateTime)
-        setLoading(false)
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(
-            cacheKey,
-            JSON.stringify({ assets: [], lastUpdate: updateTime })
-          )
-        }
-      } finally {
-        setIsRefreshing(false)
-      }
+      )
+      setAssets(results)
+      setLoading(false)
     }
-    fetchMarketData()
-    const interval = setInterval(fetchMarketData, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    fetchAllAssets()
+  }, [strategy])
 
-  function calculateTradability(asset: AssetTrend): number {
-    // Combines: confidence (40%), signal strength (30%), trend reliability (30%)
-    const signalScore =
-      asset.technicals.signal === 'BUY' ? 100 : asset.technicals.signal === 'SELL' ? 80 : 40
-    const trendScore =
-      asset.technicals.trend === 'UP' || asset.technicals.trend === 'DOWN' ? 100 : 60
-    return Math.round(
-      ((asset.technicals.confidence * 0.4 + signalScore * 0.3 + trendScore * 0.3) / 100) * 100
-    )
-  }
+  // Filter assets by selected category and search
+  const filteredAssets =
+    selectedCategory === 'all'
+      ? assets
+      : assets.filter(asset => asset.category === selectedCategory)
 
-  function inferPhase(asset: AssetTrend): MarketPhase {
-    const changeMagnitude = Math.abs(asset.changePercent24h)
-    if (changeMagnitude >= 1.8) return 'MANIPULATION'
+  const searchedAssets = search.trim()
+    ? filteredAssets.filter(
+        asset =>
+          asset.symbol.toLowerCase().includes(search.toLowerCase()) ||
+          asset.name.toLowerCase().includes(search.toLowerCase())
+      )
+    : filteredAssets
 
-    const bullishStructure = asset.technicals.signal === 'BUY' && asset.technicals.trend === 'UP'
-    const bearishStructure = asset.technicals.signal === 'SELL' && asset.technicals.trend === 'DOWN'
-
-    if (bullishStructure) return 'ACCUMULATION'
-    if (bearishStructure) return 'DISTRIBUTION'
-    return asset.changePercent24h >= 0 ? 'ACCUMULATION' : 'DISTRIBUTION'
-  }
-
-  function buildDebrief(assetList: AssetTrend[], horizon: DebriefHorizon): DebriefAsset[] {
-    const scoreByHorizon = {
-      day: (asset: AssetTrend, tradability: number) => {
-        const momentum = Math.min(100, Math.abs(asset.changePercent24h) * 20)
-        const signalBias =
-          asset.technicals.signal === 'BUY' ? 100 : asset.technicals.signal === 'SELL' ? 80 : 45
-        return Math.round(
-          asset.technicals.confidence * 0.35 +
-            tradability * 0.25 +
-            momentum * 0.25 +
-            signalBias * 0.15
-        )
-      },
-      week: (asset: AssetTrend, tradability: number) => {
-        const trendBias =
-          asset.technicals.trend === 'UP' || asset.technicals.trend === 'DOWN' ? 100 : 60
-        const momentum = Math.min(100, Math.abs(asset.changePercent24h) * 14)
-        return Math.round(
-          asset.technicals.confidence * 0.4 + tradability * 0.3 + trendBias * 0.2 + momentum * 0.1
-        )
-      },
-      month: (asset: AssetTrend, tradability: number) => {
-        const structureBias =
-          asset.technicals.macdSignal === 'BULLISH' || asset.technicals.macdSignal === 'BEARISH'
-            ? 100
-            : 65
-        return Math.round(
-          asset.technicals.confidence * 0.45 + tradability * 0.3 + structureBias * 0.25
-        )
-      },
-      year: (asset: AssetTrend, tradability: number) => {
-        const stability = Math.max(45, 100 - Math.min(55, Math.abs(asset.changePercent24h) * 12))
-        const macroTrend = asset.technicals.trend === 'SIDEWAYS' ? 55 : 95
-        return Math.round(asset.technicals.confidence * 0.45 + stability * 0.35 + macroTrend * 0.2)
-      },
-    }
-
-    return assetList
-      .map(asset => {
-        const tradability = calculateTradability(asset as AssetTrend)
-        const score = scoreByHorizon[horizon](asset as AssetTrend, tradability)
-        // Add required DebriefAsset properties
-        return {
-          symbol: asset.symbol,
-          name: asset.name,
-          type: asset.type,
-          score,
-          signal: asset.technicals.signal,
-          phase: inferPhase(asset as AssetTrend),
-          outlook: '',
-          focus: '',
-          confidence: (asset as AssetTrend).technicals.confidence,
-          tradability,
-        }
-      })
-      .sort((left, right) => right.score - left.score)
-  }
-
-  const debriefByHorizon = {
-    day: buildDebrief(assets, 'day'),
-    week: buildDebrief(assets, 'week'),
-    month: buildDebrief(assets, 'month'),
-    year: buildDebrief(assets, 'year'),
-  }
-
-  const activeDebrief = debriefByHorizon[debriefHorizon]
-
-  // Compute market stats for overview
-  const buyAssets = assets.filter(a => a.technicals.signal === 'BUY')
-  const sellAssets = assets.filter(a => a.technicals.signal === 'SELL')
-  const waitAssets = assets.filter(a => a.technicals.signal === 'WAIT')
-  const topMovers = [...assets]
-    .sort((a, b) => Math.abs(b.changePercent24h) - Math.abs(a.changePercent24h))
-    .slice(0, 4)
-  const topConfidence = [...assets]
-    .sort((a, b) => b.technicals.confidence - a.technicals.confidence)
-    .slice(0, 3)
-
-  // Category filter state
-  const [categoryFilter, setCategoryFilter] = useState<
-    'ALL' | 'forex' | 'crypto' | 'indices' | 'commodities'
-  >('ALL')
-
-  // Show all assets with tradability/confidence tier
-  const displayedAssets: DisplayedAsset[] = assets.map(asset => ({
-    ...asset,
-    tradability: calculateTradability(asset),
-    confidenceTier:
-      asset.technicals.confidence >= 75
-        ? 'HIGH'
-        : asset.technicals.confidence >= 60
-          ? 'MEDIUM'
-          : 'LOW',
-  }))
-
-  // Apply category and signal filters
-  const filteredAssets: DisplayedAsset[] = displayedAssets.filter(
-    a =>
-      (categoryFilter === 'ALL' || a.type === categoryFilter) &&
-      (signalFilter === 'ALL' || a.technicals.signal === signalFilter)
-  )
-
-  // All assets sorted by confidence
-  const allSortedAssets = [...filteredAssets].sort(
-    (a, b) => b.technicals.confidence - a.technicals.confidence
-  )
-
-  // Top trades for the day (top 6 by confidence)
-  const topTrades = [...displayedAssets]
-    .sort((a, b) => b.technicals.confidence - a.technicals.confidence)
-    .slice(0, 6)
-
-  const parseNumber = (value: string): number => parseFloat(value.replace(/[^\d.]/g, '')) || 0
-
-  const parseEntryRange = (value: string): { low: number; high: number } | null => {
-    const match = value.match(/([\d.]+)\s*-\s*([\d.]+)/)
-    if (!match) return null
-    const low = parseFloat(match[1])
-    const high = parseFloat(match[2])
-    if (!Number.isFinite(low) || !Number.isFinite(high)) return null
-    return { low, high }
-  }
-
-  const openTradeConfirm = (asset: AssetTrend) => {
-    const entryRange = parseEntryRange(asset.entryZone)
-    const entry = entryRange
-      ? asset.technicals.signal === 'BUY'
-        ? entryRange.low
-        : entryRange.high
-      : asset.currentPrice
-
-    const sl = parseNumber(asset.stopLoss)
-    const tpValue = asset.takeProfitTargets?.[0]?.value
-    const tp = tpValue ? parseNumber(tpValue) : parseNumber(asset.takeProfit)
-
-    setSelectedTradeForConfirm({
-      symbol: asset.symbol,
-      signal: asset.technicals.signal,
-      entry,
-      sl,
-      tp,
-      confidence: asset.technicals.confidence,
-      entryZone: asset.entryZone,
-      takeProfitTargets: asset.takeProfitTargets,
-    })
-    setConfirmDialogOpen(true)
-  }
-
-  const handleConfirmTrade = async (trade: any) => {
-    setLoadingTrade(true)
-    try {
-      const response = await fetch('/api/trade/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: trade.symbol,
-          signal: trade.signal,
-          entry: trade.entry,
-          sl: trade.sl,
-          tp: trade.tp,
-          buyLimit: trade.buyLimit,
-          stopLimit: trade.stopLimit,
-          source: 'page',
-          confidence: trade.confidence,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        alert(`✅ Trade confirmed!\nID: ${result.trade.tradeId}`)
-        setConfirmDialogOpen(false)
-        setSelectedTradeForConfirm(null)
-      } else {
-        alert(`❌ Error: ${result.error}`)
-      }
-    } catch (error) {
-      alert(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    } finally {
-      setLoadingTrade(false)
-    }
-  }
-
-  const renderAssetSection = (
-    sectionId: string,
-    title: string,
-    sectionAssets: DisplayedAsset[]
-  ) => (
-    <section id={sectionId} className="mb-8">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-bold text-white">{title}</h3>
-        <span className="text-xs text-slate-400">{sectionAssets.length} assets</span>
-      </div>
-
-      {sectionAssets.length === 0 ? (
-        <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-400">
-          No assets available in this section right now.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <AnimatePresence>
-            {sectionAssets.map((asset, idx) => (
-              <motion.div
-                key={`${sectionId}-${asset.symbol}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: idx * 0.03 }}
-                onClick={() => setSelectedAsset(asset)}
-                className={`p-4 rounded-xl border cursor-pointer transition-all bg-slate-900/70 backdrop-blur-lg shadow-lg ${
-                  asset.technicals.signal === 'BUY'
-                    ? 'border-emerald-500/40 hover:border-emerald-400 hover:shadow-emerald-500/20'
-                    : asset.technicals.signal === 'SELL'
-                      ? 'border-red-500/40 hover:border-red-400 hover:shadow-red-500/20'
-                      : 'border-yellow-500/40 hover:border-yellow-400 hover:shadow-yellow-500/20'
-                }`}
-              >
-                <div className="flex gap-2 mb-2 flex-wrap">
-                  <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-green-500 to-green-700 text-white">
-                    LIVE
-                  </div>
-
-                  {asset.technicals.confidence >= 75 && (
-                    <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 text-white">
-                      HIGH
-                    </div>
-                  )}
-                  {asset.confidenceTier === 'MEDIUM' && (
-                    <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-400 to-blue-600 text-white">
-                      MEDIUM
-                    </div>
-                  )}
-                  {asset.confidenceTier === 'LOW' && (
-                    <div className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 text-white">
-                      LOWER
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="text-base font-bold text-white">{asset.name}</h3>
-                    <p className="text-xs text-slate-400">{asset.symbol}</p>
-                  </div>
-                  <div
-                    className={`text-lg font-bold ${
-                      asset.technicals.signal === 'BUY'
-                        ? 'text-emerald-400'
-                        : asset.technicals.signal === 'SELL'
-                          ? 'text-red-400'
-                          : 'text-yellow-400'
-                    }`}
-                  >
-                    {asset.technicals.signal}
-                  </div>
-                </div>
-
-                <div className="mb-2">
-                  <div className="text-xl font-bold text-white">
-                    {typeof asset.currentPrice === 'number'
-                      ? `$${asset.currentPrice.toFixed(4)}`
-                      : '--'}
-                  </div>
-                  <div
-                    className={`text-xs font-medium ${
-                      typeof asset.change24h === 'number' && asset.change24h >= 0
-                        ? 'text-emerald-400'
-                        : 'text-red-400'
-                    }`}
-                  >
-                    {typeof asset.change24h === 'number' && asset.change24h >= 0 ? '+' : ''}
-                    {typeof asset.change24h === 'number' ? asset.change24h.toFixed(4) : '--'} (
-                    {typeof asset.changePercent24h === 'number'
-                      ? asset.changePercent24h.toFixed(2)
-                      : '--'}
-                    %)
-                  </div>
-                </div>
-
-                <div className="mb-3">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-slate-400">Signal Confidence</span>
-                    <span className="text-xs font-bold text-slate-300">
-                      {asset.technicals.confidence}%
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${asset.technicals.confidence}%` }}
-                      transition={{ duration: 1, delay: idx * 0.05 + 0.3 }}
-                      className={`h-full ${
-                        asset.technicals.confidence >= 75
-                          ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
-                          : asset.technicals.confidence >= 60
-                            ? 'bg-gradient-to-r from-blue-400 to-blue-600'
-                            : 'bg-gradient-to-r from-yellow-400 to-yellow-600'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                <div className="mb-3 p-2 bg-slate-700/50 rounded border border-slate-600">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold text-slate-300">Tradability Score</span>
-                    <span className="text-sm font-bold text-purple-300">{asset.tradability}%</span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-1">Reliability for trading</div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs mb-4">
-                  {asset.technicals.rsi !== 50 && asset.technicals.rsi !== undefined && (
-                    <div className="bg-slate-700/50 p-2 rounded">
-                      <div className="text-slate-400">RSI</div>
-                      <div className="text-white font-bold">
-                        {asset.technicals.rsi}
-                        {TRADINGVIEW_RSI[asset.symbol] !== undefined && (
-                          <span className="ml-2 text-xs text-amber-400 font-mono">
-                            (TV: {TRADINGVIEW_RSI[asset.symbol]})
-                          </span>
-                        )}
-                      </div>
-                      {TRADINGVIEW_RSI[asset.symbol] !== undefined &&
-                        Math.abs(asset.technicals.rsi - TRADINGVIEW_RSI[asset.symbol]) > 2 && (
-                          <div className="text-xs text-red-500 font-semibold mt-1">
-                            Warning: RSI differs from TradingView by more than ±2
-                          </div>
-                        )}
-                    </div>
-                  )}
-                  <div className="bg-slate-700/50 p-2 rounded">
-                    <div className="text-slate-400">Trend</div>
-                    <div className="text-white font-bold">{asset.technicals.trend}</div>
-                  </div>
-                  <div className="bg-slate-700/50 p-2 rounded col-span-2">
-                    <div className="text-slate-400">MACD</div>
-                    <div className="text-white font-bold">{asset.technicals.macdSignal}</div>
-                  </div>
-                </div>
-
-                <div
-                  className={`mb-4 p-2 rounded border text-xs ${
-                    asset.technicals.signal === 'BUY'
-                      ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-300'
-                      : asset.technicals.signal === 'SELL'
-                        ? 'bg-red-500/10 border-red-500/50 text-red-300'
-                        : 'bg-yellow-500/10 border-yellow-500/50 text-yellow-300'
-                  }`}
-                >
-                  <div className="font-semibold mb-1">
-                    {asset.technicals.signal === 'BUY'
-                      ? 'Entry Long Setup'
-                      : asset.technicals.signal === 'SELL'
-                        ? 'Entry Short Setup'
-                        : 'Wait for Confirmation'}
-                  </div>
-                  <div className="text-slate-300 text-xs">
-                    {asset.technicals.signal === 'BUY'
-                      ? `Entry: ${asset.entryZone} | Stop: ${asset.stopLoss}`
-                      : `Entry: ${asset.entryZone} | Stop: ${asset.stopLoss}`}
-                  </div>
-                  <div className="text-slate-300 text-xs mt-1">
-                    TP Range:{' '}
-                    {asset.takeProfitTargets
-                      .map(target => `${target.label} ${target.value}`)
-                      .join(' | ')}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={event => {
-                      event.stopPropagation()
-                      setSelectedAsset(asset)
-                    }}
-                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded font-medium transition-colors text-sm"
-                  >
-                    View Order Blocks <ChevronDown className="inline w-3 h-3 ml-1" />
-                  </button>
-                  <button
-                    onClick={event => {
-                      event.stopPropagation()
-                      openTradeConfirm(asset)
-                    }}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-medium transition-colors text-sm"
-                  >
-                    Confirm Trade
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
-    </section>
-  )
+  // Top trades: sort by confidence
+  const topTrades = [...assets].sort((a, b) => b.confidence - a.confidence).slice(0, 5)
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <header>
-        <TrendsNavigation onNavigate={handleSectionNavigate} activeSection={activeSection} />
-        <div className="pt-8">
-          <div className="max-w-7xl mx-auto px-4">
-            <nav className="mb-4 rounded-xl border border-slate-700 bg-slate-900/70 p-3 sticky top-14 z-30" aria-label="Section navigation">
-              <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
-                Jump To Section
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {/* ...existing code for section jump buttons... */}
-                {[
-                  { key: 'overview', label: 'Live Market Overview' },
-                  { key: 'debrief', label: 'Daily Debrief' },
-                  { key: 'signals', label: 'Live Signals' },
-                ].map(option => (
-                  <button
-                    key={option.key}
-                    onClick={() => {
-                      setSectionFilter(option.key)
-                      const el = document.getElementById(option.key)
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                    }}
-                    className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                      sectionFilter === option.key
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
-                        : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
-                    }`}
+    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+      <TrendsNavigation onNavigate={setActiveSection} activeSection={activeSection} />
+
+      {/* Strategy Switcher, Search, Category Filter */}
+      <div className="max-w-7xl mx-auto px-8 pt-6 flex flex-col md:flex-row gap-3 flex-wrap items-center">
+        {/* Strategy Switcher */}
+        <div className="flex gap-2 items-center">
+          <span className="font-semibold text-slate-300">Strategy:</span>
+          <select
+            className="px-3 py-2 rounded bg-slate-800 text-slate-200 border border-slate-700"
+            value={strategy}
+            onChange={e => setStrategy(e.target.value)}
+          >
+            <option value="order-blocks-accumulation">Order Blocks + Accumulation</option>
+            <option value="order-blocks">Order Blocks Only</option>
+            <option value="accumulation">Accumulation Only</option>
+          </select>
+        </div>
+        {/* Search Bar */}
+        <input
+          type="text"
+          className="px-3 py-2 rounded bg-slate-800 text-slate-200 border border-slate-700 min-w-[220px]"
+          placeholder="Search asset symbol or name..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        {/* Category Filter */}
+        <div className="flex gap-2 flex-wrap">
+          <button
+            className={`px-4 py-2 rounded font-semibold border transition-colors ${selectedCategory === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+            onClick={() => setSelectedCategory('all')}
+          >
+            All Assets
+          </button>
+          {categories.map(cat => (
+            <button
+              key={cat}
+              className={`px-4 py-2 rounded font-semibold border transition-colors ${selectedCategory === cat ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+              onClick={() => setSelectedCategory(cat)}
+            >
+              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+            </button>
+          ))}
+        </div>
+        {/* Top Trades Link */}
+        <button
+          className="px-4 py-2 rounded font-semibold bg-indigo-600 text-white hover:bg-indigo-500"
+          onClick={() => setSelectedCategory('top')}
+        >
+          View Top Trades
+        </button>
+      </div>
+
+      {/* Asset Cards */}
+      <section id="assets" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-6">
+          {selectedCategory === 'top' ? 'Top Trades' : 'All Assets'}
+        </h2>
+        <div className="flex flex-wrap gap-6">
+          {(selectedCategory === 'top' ? topTrades : searchedAssets).map(asset => (
+            <div key={asset.symbol} className="w-[340px]">
+              <div className="bg-slate-900 rounded-xl shadow-lg p-4 flex flex-col gap-3 border border-slate-700 hover:shadow-2xl transition-shadow">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-bold text-lg text-slate-100">{asset.name}</span>
+                  <span className="ml-2 px-2 py-0.5 rounded bg-gradient-to-r from-emerald-600 to-indigo-600 text-xs font-bold text-white flex items-center gap-1">
+                    True Chart Analysis
+                    <span style={{ fontSize: '0.8em', marginLeft: '2px' }}>™</span>
+                  </span>
+                  <span className="ml-auto text-xs text-slate-400">{asset.symbol}</span>
+                </div>
+                <div className="flex items-end gap-2">
+                  <span className="text-2xl font-extrabold text-emerald-400">
+                    ${asset.price.toFixed(4)}
+                  </span>
+                  <span
+                    className={`text-sm font-bold ${asset.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
                   >
-                    {option.label}
-                  </button>
-                ))}
+                    {asset.change >= 0 ? '+' : ''}
+                    {asset.change.toFixed(4)} ({asset.changePercent.toFixed(2)}%)
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <span className="bg-slate-800 px-2 py-1 rounded text-xs text-slate-300">
+                    RSI: <span className="font-bold text-yellow-400">{asset.rsi}</span>
+                  </span>
+                  <span className="bg-slate-800 px-2 py-1 rounded text-xs text-slate-300">
+                    Trend: <span className="font-bold text-blue-400">{asset.trend}</span>
+                  </span>
+                  <span className="bg-slate-800 px-2 py-1 rounded text-xs text-slate-300">
+                    MACD: <span className="font-bold text-purple-400">{asset.macdSignal}</span>
+                  </span>
+                  <span className="bg-slate-800 px-2 py-1 rounded text-xs text-slate-300">
+                    Signal:{' '}
+                    <span className="font-bold text-indigo-400">
+                      {asset.trend === 'BULLISH' && asset.confidence >= 55
+                        ? 'Buy'
+                        : asset.trend === 'BEARISH' && asset.confidence >= 55
+                          ? 'Sell'
+                          : 'Neutral'}
+                    </span>
+                  </span>
+                  <span className="bg-slate-800 px-2 py-1 rounded text-xs text-slate-300">
+                    Confidence:{' '}
+                    <span className="font-bold text-emerald-400">
+                      {asset.confidence >= 55 ? `${asset.confidence}%` : '—'}
+                    </span>
+                  </span>
+                </div>
+                <button
+                  className="mt-4 px-3 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-500"
+                  onClick={() => {
+                    setSelectedAsset(asset)
+                  }}
+                >
+                  View Full Analysis
+                </button>
               </div>
-            </nav>
-          </div>
-        </div>
-      </header>
-      {/* ...existing code for main content sections... */}
-      <section id="overview" className="mb-6 rounded-xl border border-slate-700 bg-gradient-to-r from-slate-900/80 to-slate-850/60 p-5">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
-              Live Market Overview
-            </h1>
-            <p className="text-sm text-slate-300">
-              Real-time analysis across {assets.length} assets | Updated {lastUpdate}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href="/guides/tradingview"
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-xs text-slate-300 hover:bg-slate-600 transition-colors"
-            >
-              <Tv className="h-3.5 w-3.5 text-slate-300" />
-              TV Guide
-            </Link>
-            <Link
-              href="/learning-path"
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-xs text-indigo-300 hover:bg-indigo-500/30 transition-colors"
-            >
-              <GraduationCap className="h-3.5 w-3.5 text-indigo-300" />
-              Learning Path
-            </Link>
-          </div>
-        </div>
-        {/* ...existing code for Market Stats Grid... */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          {/* ...existing code for stats cards... */}
+            </div>
+          ))}
         </div>
       </section>
-                <div className="text-red-300 text-xs font-semibold mb-1">SELL Signals</div>
-                <div className="text-2xl font-bold text-red-400">{sellAssets.length}</div>
-                <div className="text-[11px] text-slate-400">
-                  {sellAssets.length > 0
-                    ? `${((sellAssets.length / assets.length) * 100).toFixed(0)}% of market`
-                    : 'None active'}
-                </div>
-              </div>
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-                <div className="text-amber-300 text-xs font-semibold mb-1">WAIT (Neutral)</div>
-                <div className="text-2xl font-bold text-amber-400">{waitAssets.length}</div>
-                <div className="text-[11px] text-slate-400">
-                  {waitAssets.length > 0
-                    ? `${((waitAssets.length / assets.length) * 100).toFixed(0)}% of market`
-                    : 'None active'}
-                </div>
-              </div>
-              <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3">
-                <div className="text-cyan-300 text-xs font-semibold mb-1">Market Status</div>
-                <div className="text-lg font-bold text-cyan-400">
-                  {buyAssets.length > sellAssets.length
-                    ? 'Bullish'
-                    : sellAssets.length > buyAssets.length
-                      ? 'Bearish'
-                      : 'Sideways'}
-                </div>
-                <div className="text-[11px] text-slate-400">Sentiment bias</div>
-              </div>
-            </div>
 
-            {/* Signal Filter Controls */}
-            <div className="mb-4">
-              <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
-                Filter by Signal
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {(['ALL', 'BUY', 'SELL', 'WAIT'] as const).map(signal => (
-                  <button
-                    key={signal}
-                    onClick={() => setSignalFilter(signal)}
-                    className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                      signalFilter === signal
-                        ? signal === 'BUY'
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
-                          : signal === 'SELL'
-                            ? 'bg-red-500/20 text-red-300 border-red-500/50'
-                            : signal === 'WAIT'
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                              : 'bg-slate-600 text-slate-100 border-slate-500'
-                        : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
-                    }`}
-                  >
-                    {signal}
-                  </button>
-                ))}
-              </div>
-            </div>
+      {/* Other Sections */}
+      <section id="debrief" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-2 flex items-center">Daily Debrief</h2>
+        <OrderBlockSection />
+      </section>
 
-            {/* Top Movers & Confidence */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
-                  Top Movers (24h Volatility)
-                </div>
-                <div className="space-y-2">
-                  {topMovers.map((asset, idx) => (
-                    <div
-                      key={asset.symbol}
-                      className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-slate-200">{asset.symbol}</div>
-                          <div className="text-[11px] text-slate-500">{asset.name}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-sm font-bold ${
-                            asset.changePercent24h >= 0 ? 'text-emerald-400' : 'text-red-400'
-                          }`}
-                        >
-                          {asset.changePercent24h >= 0 ? '+' : ''}
-                          {asset.changePercent24h.toFixed(2)}%
-                        </div>
-                        <div className="text-[11px] text-slate-400">
-                          ${asset.currentPrice.toFixed(4)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-2">
-                  Highest Confidence
-                </div>
-                <div className="space-y-2">
-                  {topConfidence.map((asset, idx) => (
-                    <div
-                      key={asset.symbol}
-                      className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50 border border-slate-700"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-slate-200">{asset.symbol}</div>
-                          <div className="text-[11px] text-slate-500">
-                            {asset.technicals.signal}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-purple-400">
-                          {asset.technicals.confidence}%
-                        </div>
-                        <div className="text-[11px] text-slate-400">confidence</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+      <section id="signals" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-2 flex items-center">Live Signals</h2>
+        <NotificationSystem />
+      </section>
 
-            <div className="mt-3 pt-3 border-t border-slate-700 text-[11px] text-slate-400 flex gap-2 flex-wrap">
-              <Link
-                href="/doctrine"
-                className="text-indigo-300 hover:text-indigo-200 font-semibold"
-              >
-                Trading Doctrine
-              </Link>
-              <span>•</span>
-              <Link
-                href="/guides/deriv"
-                className="text-indigo-300 hover:text-indigo-200 font-semibold"
-              >
-                Deriv Guide
-              </Link>
-              <span>•</span>
-              <Link
-                href="/courses/trading-psychology"
-                className="text-indigo-300 hover:text-indigo-200 font-semibold"
-              >
-                Psychology Course
-              </Link>
-            </div>
-          </div>
+      <section id="news" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-2 flex items-center">Economic News</h2>
+        <EconomicNewsSection />
+      </section>
 
-          <div className="mb-4 p-3 rounded-xl border border-slate-700 bg-slate-900/70 text-slate-200 text-xs flex flex-wrap gap-3 items-center">
-            <span className="font-semibold text-emerald-300">Live Build</span>
-            <span>
-              Commit: <span className="text-white">{deploymentInfo?.commitShort || 'local'}</span>
-            </span>
-            <span>
-              Env: <span className="text-white">{deploymentInfo?.environment || 'unknown'}</span>
-            </span>
-            <span>
-              Updated: <span className="text-white">{lastUpdate || 'n/a'}</span>
-            </span>
-          </div>
+      <section id="failures" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-2 flex items-center">Analysis Failures</h2>
+        {/* Add failure reporting component here if available */}
+      </section>
 
-          {sectionFilter !== 'signals' && liveFailures.length > 0 && (
-            <div
-              id="failures"
-              className="mb-4 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-200"
-            >
-              <h3 className="font-bold mb-2">Live Data Failure Report</h3>
-              <p className="text-xs mb-2">
-                Demo mode is disabled. Symbols below were skipped because live providers failed.
-              </p>
-              <div className="max-h-48 overflow-auto space-y-2 text-xs">
-                {liveFailures.slice(0, 20).map((entry, index) => (
-                  <div
-                    key={`${entry.symbol}-${entry.timestamp}-${index}`}
-                    className="border-b border-red-500/20 pb-2"
-                  >
-                    <div className="font-semibold">
-                      {entry.symbol} ({entry.assetType})
-                    </div>
-                    <div>{entry.reasons.join(' | ')}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+      <section id="dashboard" className="max-w-7xl mx-auto p-8 mb-12">
+        <h2 className="text-2xl font-bold mb-2 flex items-center">Bot Dashboard</h2>
+        {/* Add bot dashboard component or link here */}
+      </section>
 
-          {sectionFilter !== 'signals' && (
-            <div
-              id="debrief"
-              className="mb-6 rounded-xl border border-slate-700 bg-slate-900/70 p-4 md:p-5"
-            >
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-                <div>
-                  <h2 className="text-lg md:text-xl font-bold text-white">Daily Debrief</h2>
-                  <p className="text-sm text-slate-300">
-                    Predictive multi-timeframe shortlist using higher-timeframe accumulation,
-                    distribution, manipulation behavior, order block structure, and signal
-                    confidence.
-                  </p>
-                </div>
-                <div className="text-xs text-slate-300">
-                  Refreshed with live feed • {new Date().toLocaleDateString()}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mb-3">
-                {DEBRIEF_HORIZONS.map(horizon => (
-                  <button
-                    key={horizon.key}
-                    onClick={() => setDebriefHorizon(horizon.key)}
-                    className={`px-3 py-1.5 text-xs rounded border ${
-                      debriefHorizon === horizon.key
-                        ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
-                        : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
-                    }`}
-                  >
-                    {horizon.label}
-                  </button>
-                ))}
-              </div>
-
-              <p className="text-xs text-slate-400 mb-4">
-                {DEBRIEF_HORIZONS.find(item => item.key === debriefHorizon)?.summary}
-              </p>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {activeDebrief.map((item, index) => (
-                  <div
-                    key={`${debriefHorizon}-${item.symbol}`}
-                    className="rounded-lg border border-slate-700 bg-slate-800/70 p-3"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <div className="text-sm font-bold text-white">
-                          #{index + 1} {item.name}
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          {item.symbol} • {item.type.toUpperCase()}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-emerald-300">{item.score}%</div>
-                        <div className="text-[11px] text-slate-400">debrief score</div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          item.signal === 'BUY'
-                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                            : item.signal === 'SELL'
-                              ? 'bg-red-500/15 text-red-300 border border-red-500/30'
-                              : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                        }`}
-                      >
-                        {item.signal}
-                      </span>
-                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-violet-500/15 text-violet-300 border border-violet-500/30">
-                        {item.phase}
-                      </span>
-                    </div>
-
-                    <div className="text-xs text-slate-300 mb-1">{item.outlook}</div>
-                    <div className="text-xs text-slate-400">{item.focus}</div>
-                    <div className="mt-2 text-[11px] text-slate-500">
-                      Confidence {item.confidence}% • Tradability {item.tradability}%
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-3 text-xs text-slate-400 flex items-center justify-between gap-2">
-                <span>
-                  Uses live market data only. No demo values are included in debrief rankings.
-                </span>
-                <Link
-                  href="/trends/debrief"
-                  className="text-indigo-300 hover:text-indigo-200 font-semibold"
-                >
-                  Full debrief page
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {/* Top Trades for the Day */}
-          <div className="mt-6">
-            {renderAssetSection('top', 'Top Trade Opportunities', topTrades)}
-          </div>
-
-          {/* Category and Signal Filters */}
-          <div className="mb-4 flex flex-wrap gap-2">
-            <div className="text-xs text-slate-400 font-semibold mr-2">Category:</div>
-            {(['ALL', 'forex', 'crypto', 'indices', 'commodities'] as const).map(cat => (
-              <button
-                key={cat}
-                onClick={() => setCategoryFilter(cat)}
-                className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                  categoryFilter === cat
-                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
-                    : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
-                }`}
-              >
-                {cat.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          {/* Forex Section */}
-          <div id="forex" className="mt-6">
-            {renderAssetSection(
-              'forex',
-              'Forex Pairs',
-              displayedAssets.filter(a => a.type === 'forex')
-            )}
-          </div>
-
-          {/* Crypto Section */}
-          <div id="crypto" className="mt-6">
-            {renderAssetSection(
-              'crypto',
-              'Crypto',
-              displayedAssets.filter(a => a.type === 'crypto')
-            )}
-          </div>
-
-          {/* Indices Section */}
-          <div id="indices" className="mt-6">
-            {renderAssetSection(
-              'indices',
-              'Indices',
-              displayedAssets.filter(a => a.type === 'indices')
-            )}
-          </div>
-
-          {/* Commodities Section */}
-          <div id="commodities" className="mt-6">
-            {renderAssetSection(
-              'commodities',
-              'Commodities',
-              displayedAssets.filter(a => a.type === 'commodities')
-            )}
-          </div>
-
-          {/* All assets sorted by confidence, with filters applied */}
-          <div id="all" className="mt-6">
-            {renderAssetSection('all', 'All Assets (Sorted by Confidence)', allSortedAssets)}
-          </div>
-
-          {/* Dashboard Section (anchor only, for navigation) */}
-          <div id="dashboard" />
-
-          <AnimatePresence>
-            {selectedAsset && (
-              <AssetDetailModal
-                asset={{
-                  symbol: selectedAsset.symbol,
-                  name: selectedAsset.name,
-                  price: selectedAsset.currentPrice,
-                  signal: selectedAsset.technicals.signal,
-                  confidence: selectedAsset.technicals.confidence,
-                  type: selectedAsset.type,
-                  entryZone: selectedAsset.entryZone,
-                  stopLoss: selectedAsset.stopLoss,
-                  takeProfitTargets: selectedAsset.takeProfitTargets,
-                }}
-                onClose={() => setSelectedAsset(null)}
-              />
-            )}
-          </AnimatePresence>
-
-          {selectedTradeForConfirm && (
-            <TradeConfirmationDialog
-              isOpen={confirmDialogOpen}
-              trade={selectedTradeForConfirm}
-              onConfirm={handleConfirmTrade}
-              onCancel={() => {
-                setConfirmDialogOpen(false)
-                setSelectedTradeForConfirm(null)
-              }}
-              loading={loadingTrade}
-            />
-          )}
-        </div>
-      </div>
-    </div>
+      {/* Full Analysis Modal */}
+      {selectedAsset && (
+        <AssetDetailModal
+          asset={{
+            symbol: selectedAsset.symbol,
+            name: selectedAsset.name,
+            price: selectedAsset.price,
+            signal: selectedAsset.trend || '',
+            confidence: selectedAsset.confidence,
+            type: selectedAsset.category || '',
+            entryZone: '',
+            stopLoss: '',
+            takeProfitTargets: [],
+          }}
+          onClose={() => setSelectedAsset(null)}
+        />
+      )}
+    </main>
   )
 }
