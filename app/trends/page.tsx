@@ -1,8 +1,7 @@
 ﻿
 type TakeProfitTarget = {
 
-'use client'
-
+"use client";
 import { useState } from 'react'
 import TrendsNavigation from '@/components/TrendsNavigation'
 import { TrendsDashboard } from '@/components/TrendsDashboard'
