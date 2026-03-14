@@ -753,38 +753,43 @@ export default function OrderBlockChart({
           </svg>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4 text-xs text-slate-400">
+      {/* Checklist/Legend */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs text-slate-400 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-500 rounded-sm" />
-          <span>Bullish Order Blocks</span>
+          Bullish Order Blocks
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-red-500 rounded-sm" />
-          <span>Bearish Order Blocks</span>
+          Bearish Order Blocks
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-blue-500" />
-          <span>Support Level</span>
+          <div className="w-3 h-3 bg-blue-600 rounded-sm" />
+          Support
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-amber-500" />
-          <span>Resistance Level</span>
+          <div className="w-3 h-3 bg-amber-500 rounded-sm" />
+          Resistance
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-green-500" />
-          <span>Entry / TP Lines</span>
+          <div className="w-3 h-3 bg-lime-500 rounded-sm" />
+          Entry/TP
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-red-500" />
-          <span>Stop Loss Line</span>
+          <div className="w-3 h-3 bg-purple-400 rounded-sm" />
+          Current Price
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-orange-500 rounded-full" />
-          <span>Buy/Sell-side Liquidity Sweep</span>
+          <div className="w-3 h-3 bg-orange-400 rounded-sm" />
+          Liquidity Sweep
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-cyan-500" />
-          <span>Chart Mode (Candles/Line)</span>
+          <div className="w-3 h-3 bg-indigo-400 rounded-sm" />
+          Prediction
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-yellow-400 rounded-sm" />
+          TP Zone
         </div>
       </div>
       {/* Persistent Risk/Reward/Profit Calculator Overlay */}
