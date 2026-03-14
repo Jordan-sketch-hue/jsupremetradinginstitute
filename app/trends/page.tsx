@@ -41,8 +41,7 @@ const assetList = [
   { symbol: 'UK100', name: 'FTSE 100', category: 'indices' },
   { symbol: 'BTCUSD', name: 'Bitcoin', category: 'crypto' },
   { symbol: 'BCHUSD', name: 'Bitcoin Cash', category: 'crypto' },
-]
-
+];
 import { useEffect } from 'react'
 import { analyzeTechnicals } from '@/lib/technicalAnalysis'
 
