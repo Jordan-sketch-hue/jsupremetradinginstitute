@@ -74,10 +74,22 @@ export async function GET(request: NextRequest) {
     }
 
     if (!candles) {
+      // Check for known unsupported symbols
+      const unsupportedSymbols = ['WTI_H6', 'XNGUSD']
+      if (unsupportedSymbols.includes(symbol)) {
+        return NextResponse.json(
+          {
+            error: `This asset (${symbol}) is not supported by our data provider. Please try another asset or timeframe.`,
+            symbol,
+            dataSource: 'NONE',
+          },
+          { status: 503 }
+        )
+      }
       console.error(`❌ No candles returned for ${normalizedSymbol} (${assetType}, ${timeframe})`)
       return NextResponse.json(
         {
-          error: `No live historical data available for ${normalizedSymbol} (${assetType}, ${timeframe})`,
+          error: `No live historical data available for ${normalizedSymbol} (${assetType}, ${timeframe}). This may be due to provider limitations or market closure.`,
           symbol,
           dataSource: 'NONE',
         },

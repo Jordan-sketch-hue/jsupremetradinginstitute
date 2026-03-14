@@ -234,7 +234,30 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
               <p className="mt-3 text-slate-400">Analyzing price action and order blocks...</p>
             </div>
           ) : error ? (
-            <div className="text-center py-12 text-red-400">{error}</div>
+            <div className="text-center py-12 text-red-400">
+              {error.includes('not supported by our data provider') ? (
+                <>
+                  <div className="text-lg font-bold mb-2">Data Not Available</div>
+                  <div>
+                    This asset is not supported by our data provider.
+                    <br />
+                    Please try another asset or timeframe.
+                  </div>
+                </>
+              ) : error.includes('No live historical data available') ||
+                error.includes('Failed to fetch candles') ? (
+                <>
+                  <div className="text-lg font-bold mb-2">No Data for This Symbol/Timeframe</div>
+                  <div>
+                    Data is not available for this symbol and timeframe.
+                    <br />
+                    This may be due to provider limitations or market closure.
+                  </div>
+                </>
+              ) : (
+                error
+              )}
+            </div>
           ) : (
             <>
               {/* Key Metrics */}
