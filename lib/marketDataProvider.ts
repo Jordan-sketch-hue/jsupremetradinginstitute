@@ -197,6 +197,8 @@ const COMMODITY_TWELVE_SYMBOL_MAP: Record<string, string> = {
   XAGUSD: 'XAG/USD',
   XPTUSD: 'XPT/USD',
   WTI: 'USOIL',
+  WTI_H6: 'USOIL', // Map WTI_H6 to USOIL for Twelve Data
+  XNGUSD: 'NG/USD', // Map XNGUSD to NG/USD for Natural Gas
 }
 
 const COMMODITY_YAHOO_SYMBOL_MAP: Record<string, string> = {
