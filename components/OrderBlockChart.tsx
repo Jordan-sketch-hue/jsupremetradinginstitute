@@ -33,6 +33,7 @@ export default function OrderBlockChart({
   const STORAGE_KEY = 'order-block-chart-prefs-v2'
   const [chartWidth, setChartWidth] = useState(800)
   const [chartHeight] = useState(400)
+  const [panY, setPanY] = useState(0) // vertical pan
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState(0)
   const [isPanning, setIsPanning] = useState(false)
@@ -119,7 +120,11 @@ export default function OrderBlockChart({
   const yMin = minPrice - padding
   const yMax = maxPrice + padding
   const yRange = yMax - yMin
-  const priceToY = (price: number) => chartHeight - ((price - yMin) / yRange) * chartHeight
+  // Add vertical pan offset to priceToY
+  const priceToY = (price: number) => {
+    // panY is in pixels, positive = move chart up (see lower prices)
+    return chartHeight - ((price - yMin) / yRange) * chartHeight + panY
+  }
   const visibleCandles = Math.max(24, Math.floor(candles.length / zoom))
   const maxPan = Math.max(0, candles.length - visibleCandles)
   const panIndex = Math.min(maxPan, Math.max(0, Math.round(pan)))
@@ -413,15 +418,21 @@ export default function OrderBlockChart({
   }, [maxPan, zoom])
 
   // Mouse drag-to-pan
+  // Track both X and Y for panning
+  const [panStartY, setPanStartY] = useState(0)
   function handleMouseDown(e: React.MouseEvent<HTMLDivElement>) {
     setIsPanning(true)
     setPanStartX(e.clientX)
+    setPanStartY(e.clientY)
   }
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     if (isPanning) {
       const dx = e.clientX - panStartX
+      const dy = e.clientY - panStartY
       setPan(p => Math.max(0, Math.min(maxPan, p - dx / 20)))
+      setPanY(y => y + dy)
       setPanStartX(e.clientX)
+      setPanStartY(e.clientY)
     }
   }
   function handleMouseUp() {
@@ -445,7 +456,7 @@ export default function OrderBlockChart({
         <div className="text-sm text-slate-400">Current: ${currentPrice.toFixed(4)}</div>
       </div>
       {/* Improved Nav Bar & Zoom Controls */}
-      <div className="mb-3 flex flex-wrap gap-2 items-center bg-slate-900 rounded-lg px-3 py-2 border border-slate-700">
+      <div className="mb-3 flex flex-wrap gap-2 items-center bg-slate-900 rounded-lg px-3 py-2 border border-slate-700 shadow-xl">
         {/* Chart Mode */}
         <button
           className={`px-3 py-1 rounded font-semibold transition-colors ${chartMode === 'candles' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
@@ -549,10 +560,18 @@ export default function OrderBlockChart({
             onClick={() => {
               setZoom(1)
               setPan(0)
+              setPanY(0)
             }}
             title="Reset View"
           >
             ⟳
+          </button>
+          <button
+            className="px-2 py-1 rounded bg-slate-700 text-white font-bold"
+            onClick={() => setPanY(0)}
+            title="Center Y"
+          >
+            ⬆⬇
           </button>
         </div>
       </div>
