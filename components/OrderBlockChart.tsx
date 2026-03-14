@@ -89,8 +89,18 @@ export default function OrderBlockChart({
     }
   }, [chartMode, obRangeMode])
 
-  if (candles.length === 0)
-    return <div className="text-center p-4 text-slate-400">No data available</div>
+  // Always render a minimal chart frame, even if no data
+  if (!candles || candles.length === 0) {
+    return (
+      <div className="w-full bg-slate-800 rounded-lg p-4 border border-slate-700 min-h-[300px] flex flex-col items-center justify-center">
+        <svg width={800} height={400} className="bg-slate-900 rounded border border-slate-700">
+          <text x="50%" y="50%" textAnchor="middle" fill="#64748b" fontSize="18">
+            No data available
+          </text>
+        </svg>
+      </div>
+    )
+  }
 
   // Chart logic
   const prices = candles.map(c => [c.high, c.low, c.close]).flat()
@@ -113,7 +123,8 @@ export default function OrderBlockChart({
   const maxPan = Math.max(0, candles.length - visibleCandles)
   const panIndex = Math.min(maxPan, Math.max(0, Math.round(pan)))
   const displayCandles = candles.slice(panIndex, panIndex + visibleCandles)
-  const xStep = chartWidth / displayCandles.length
+  const safeDisplayCount = Math.max(1, displayCandles.length)
+  const xStep = chartWidth / safeDisplayCount
 
   // Candles
   const candleElements = displayCandles.map((candle, i) => {
@@ -126,6 +137,9 @@ export default function OrderBlockChart({
     const color = isGreen ? '#10b981' : '#ef4444'
     const wickY = Math.min(yHigh, yOpen, yClose)
     const wickHeight = Math.max(yLow, yOpen, yClose) - wickY
+    // Prevent negative/zero width/height
+    const rectWidth = Math.max(1, xStep - 4)
+    const rectHeight = Math.max(1, Math.abs(yClose - yOpen))
     return (
       <g
         key={i}
@@ -149,8 +163,8 @@ export default function OrderBlockChart({
         <rect
           x={x + 2}
           y={Math.min(yOpen, yClose)}
-          width={xStep - 4}
-          height={Math.abs(yClose - yOpen) || 1}
+          width={rectWidth}
+          height={rectHeight}
           fill={color}
           opacity="0.8"
         />

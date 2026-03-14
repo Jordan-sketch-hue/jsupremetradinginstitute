@@ -57,19 +57,27 @@ export async function GET(request: NextRequest) {
     let dataSource = 'LIVE'
     const candleLimit = candleLimitForTimeframe(timeframe)
 
-    const historical = await getHistoricalCandles(normalizedSymbol, assetType, timeframe)
-    if (historical) {
-      candles = historical.candles
-      dataSource = historical.provider
-      console.log(
-        `✅ Using ${historical.provider} data for ${normalizedSymbol}: ${candles.length} candles`
+    try {
+      const historical = await getHistoricalCandles(normalizedSymbol, assetType, timeframe)
+      if (historical) {
+        candles = historical.candles
+        dataSource = historical.provider
+        console.log(
+          `✅ Using ${historical.provider} data for ${normalizedSymbol}: ${candles.length} candles`
+        )
+      }
+    } catch (fetchErr) {
+      console.error(
+        `❌ Error fetching candles for ${normalizedSymbol} (${assetType}, ${timeframe}):`,
+        fetchErr
       )
     }
 
     if (!candles) {
+      console.error(`❌ No candles returned for ${normalizedSymbol} (${assetType}, ${timeframe})`)
       return NextResponse.json(
         {
-          error: 'No live historical data available',
+          error: `No live historical data available for ${normalizedSymbol} (${assetType}, ${timeframe})`,
           symbol,
           dataSource: 'NONE',
         },
