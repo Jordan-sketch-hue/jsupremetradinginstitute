@@ -338,20 +338,77 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
                 </p>
               </div>
 
-              {/* Chart */}
-              {/* TradingView Advanced Chart for full markup and multi-timeframe */}
+              {/* Chart Navigation Bar (applies to both charts) */}
               <div className="my-8">
-                <h3 className="text-lg font-semibold text-slate-100 mb-2">
-                  Interactive Chart (TradingView)
-                </h3>
-                <div className="rounded-lg border border-slate-700 overflow-hidden bg-black">
+                <h3 className="text-lg font-semibold text-slate-100 mb-2">Chart View & Overlays</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className="text-xs text-slate-400 uppercase tracking-wide">Timeframe</span>
+                  {TIMEFRAME_OPTIONS.map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => setTimeframe(option.value)}
+                      className={`px-3 py-1 text-sm rounded border ${
+                        timeframe === option.value
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                          : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                  {/* Overlay toggles for custom chart */}
+                  <span className="ml-4 text-xs text-slate-400 uppercase tracking-wide">
+                    Overlays
+                  </span>
+                  <button className="px-3 py-1 text-sm rounded border bg-blue-700/20 text-blue-300 border-blue-700/50">
+                    Support
+                  </button>
+                  <button className="px-3 py-1 text-sm rounded border bg-amber-700/20 text-amber-300 border-amber-700/50">
+                    Resistance
+                  </button>
+                  <button className="px-3 py-1 text-sm rounded border bg-lime-700/20 text-lime-300 border-lime-700/50">
+                    Entry/TP
+                  </button>
+                  <button className="px-3 py-1 text-sm rounded border bg-red-700/20 text-red-300 border-red-700/50">
+                    Stop Loss
+                  </button>
+                  <button className="px-3 py-1 text-sm rounded border bg-purple-700/20 text-purple-300 border-purple-700/50">
+                    Current Price
+                  </button>
+                  <button className="px-3 py-1 text-sm rounded border bg-orange-700/20 text-orange-300 border-orange-700/50">
+                    Liquidity Sweeps
+                  </button>
+                  <button className="px-3 py-1 text-sm rounded border bg-indigo-700/20 text-indigo-300 border-indigo-700/50">
+                    Prediction
+                  </button>
+                </div>
+                {/* TradingView Chart */}
+                <div className="rounded-lg border border-slate-700 overflow-hidden bg-black mb-8">
                   <AdvancedChartWidget
                     symbol={asset.symbol.includes('USD') ? `FX_IDC:${asset.symbol}` : asset.symbol}
-                    height={600}
+                    height={400}
+                  />
+                </div>
+                {/* Custom Chart with markup overlays */}
+                <div className="rounded-lg border border-slate-700 overflow-hidden bg-black">
+                  <OrderBlockChart
+                    symbol={asset.symbol}
+                    timeframe={timeframe}
+                    candles={candles}
+                    orderBlocks={analysis?.orderBlocks || []}
+                    support={analysis?.support || []}
+                    resistance={analysis?.resistance || []}
+                    nearestOB={analysis?.nearestOB || null}
+                    currentPrice={asset.price}
+                    entryPrice={entryPrice}
+                    stopLoss={stopLoss}
+                    takeProfitTargets={takeProfitTargets}
                   />
                 </div>
                 <p className="text-xs text-slate-400 mt-2">
-                  Full TradingView chart: markup, all timeframes, and drawing tools available.
+                  TradingView chart (top): full drawing tools and timeframes.
+                  <br />
+                  Custom chart (bottom): advanced overlays, markup, and strategy visualization.
                 </p>
               </div>
 
