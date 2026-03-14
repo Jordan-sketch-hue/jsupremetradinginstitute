@@ -1,4 +1,6 @@
 ﻿
+type TakeProfitTarget = {
+
 'use client'
 
 type TakeProfitTarget = {
