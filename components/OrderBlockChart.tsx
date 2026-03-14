@@ -45,8 +45,9 @@ export default function OrderBlockChart({
   const [obRangeMode, setObRangeMode] = useState<'recent' | 'older' | 'all'>('recent')
   const [showBullishOB, setShowBullishOB] = useState(false)
   const [showBearishOB, setShowBearishOB] = useState(false)
-  const [showSupport, setShowSupport] = useState(false)
-  const [showResistance, setShowResistance] = useState(false)
+  // Overlays are now visible by default
+  const [showSupport, setShowSupport] = useState(true)
+  const [showResistance, setShowResistance] = useState(true)
   const [showEntryTargets, setShowEntryTargets] = useState(true)
   const [showStopLoss, setShowStopLoss] = useState(false)
   const [showCurrentPrice, setShowCurrentPrice] = useState(false)
@@ -286,7 +287,7 @@ export default function OrderBlockChart({
     )
   })
 
-  // Render support levels
+  // Render support levels (thicker, more visible)
   const supportElements = support.map((level, i) => {
     const y = priceToY(level)
     return (
@@ -296,16 +297,19 @@ export default function OrderBlockChart({
           y1={y}
           x2={chartWidth}
           y2={y}
-          stroke="#3b82f6"
-          strokeWidth="1"
-          strokeDasharray="2"
-          opacity="0.6"
+          stroke="#2563eb"
+          strokeWidth="2.5"
+          strokeDasharray="4"
+          opacity="0.85"
         />
+        <text x={chartWidth - 60} y={y - 4} fill="#2563eb" fontSize="12" fontWeight="bold">
+          Support
+        </text>
       </g>
     )
   })
 
-  // Render resistance levels
+  // Render resistance levels (thicker, more visible)
   const resistanceElements = resistance.map((level, i) => {
     const y = priceToY(level)
     return (
@@ -316,10 +320,13 @@ export default function OrderBlockChart({
           x2={chartWidth}
           y2={y}
           stroke="#f59e0b"
-          strokeWidth="1"
-          strokeDasharray="2"
-          opacity="0.6"
+          strokeWidth="2.5"
+          strokeDasharray="4"
+          opacity="0.85"
         />
+        <text x={chartWidth - 90} y={y - 4} fill="#f59e0b" fontSize="12" fontWeight="bold">
+          Resistance
+        </text>
       </g>
     )
   })
@@ -651,7 +658,7 @@ export default function OrderBlockChart({
                 </text>
               </>
             )}
-            {/* Entry/TP Lines */}
+            {/* Entry/TP Lines as zones if multiple TPs */}
             {showEntryTargets && (
               <>
                 <line
@@ -667,33 +674,80 @@ export default function OrderBlockChart({
                 <text x={8} y={yEntry - 6} fill="#22c55e" fontSize="13" fontWeight="900">
                   Entry
                 </text>
-                {takeProfitTargets.map(tp => {
-                  const y = priceToY(tp.price)
-                  return (
-                    <g key={`tp-${tp.label}`}>
-                      <line
-                        x1="0"
-                        y1={y}
-                        x2={chartWidth}
-                        y2={y}
-                        stroke="#facc15"
-                        strokeWidth="3"
-                        strokeDasharray="6"
-                        opacity="0.95"
-                      />
-                      <text
-                        x={chartWidth - 70}
-                        y={y - 6}
-                        fill="#facc15"
-                        fontSize="13"
-                        fontWeight="900"
-                        style={{ textShadow: '0 1px 4px #000' }}
-                      >
-                        TP: {tp.label}
-                      </text>
-                    </g>
-                  )
-                })}
+                {/* TP as zone if multiple targets */}
+                {takeProfitTargets.length > 1
+                  ? (() => {
+                      const tpPrices = takeProfitTargets.map(tp => tp.price).sort((a, b) => a - b)
+                      const y1 = priceToY(tpPrices[0])
+                      const y2 = priceToY(tpPrices[tpPrices.length - 1])
+                      return (
+                        <g key="tp-zone">
+                          <rect
+                            x="0"
+                            y={Math.min(y1, y2)}
+                            width={chartWidth}
+                            height={Math.abs(y2 - y1)}
+                            fill="rgba(250,204,21,0.13)"
+                          />
+                          <line
+                            x1="0"
+                            y1={y1}
+                            x2={chartWidth}
+                            y2={y1}
+                            stroke="#facc15"
+                            strokeWidth="3"
+                            strokeDasharray="6"
+                            opacity="0.95"
+                          />
+                          <line
+                            x1="0"
+                            y1={y2}
+                            x2={chartWidth}
+                            y2={y2}
+                            stroke="#facc15"
+                            strokeWidth="3"
+                            strokeDasharray="6"
+                            opacity="0.95"
+                          />
+                          <text
+                            x={chartWidth - 90}
+                            y={Math.min(y1, y2) - 6}
+                            fill="#facc15"
+                            fontSize="13"
+                            fontWeight="900"
+                          >
+                            TP Zone
+                          </text>
+                        </g>
+                      )
+                    })()
+                  : takeProfitTargets.map(tp => {
+                      const y = priceToY(tp.price)
+                      return (
+                        <g key={`tp-${tp.label}`}>
+                          <line
+                            x1="0"
+                            y1={y}
+                            x2={chartWidth}
+                            y2={y}
+                            stroke="#facc15"
+                            strokeWidth="3"
+                            strokeDasharray="6"
+                            opacity="0.95"
+                          />
+                          <text
+                            x={chartWidth - 70}
+                            y={y - 6}
+                            fill="#facc15"
+                            fontSize="13"
+                            fontWeight="900"
+                            style={{ textShadow: '0 1px 4px #000' }}
+                          >
+                            TP: {tp.label}
+                          </text>
+                        </g>
+                      )
+                    })}
               </>
             )}
           </svg>
@@ -731,6 +785,38 @@ export default function OrderBlockChart({
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 border-2 border-cyan-500" />
           <span>Chart Mode (Candles/Line)</span>
+        </div>
+      </div>
+      {/* Persistent Risk/Reward/Profit Calculator Overlay */}
+      <div className="mt-4 mb-2 p-3 bg-slate-700 rounded border border-slate-600 flex flex-wrap gap-4 items-center justify-between">
+        <div className="text-xs text-slate-300">
+          <b>Entry:</b> ${entryPrice.toFixed(4)}
+        </div>
+        <div className="text-xs text-red-300">
+          <b>Stop Loss:</b> ${stopLoss.toFixed(4)}
+        </div>
+        <div className="text-xs text-yellow-300">
+          <b>TP:</b> {takeProfitTargets.map(tp => tp.price.toFixed(4)).join(', ')}
+        </div>
+        <div className="text-xs text-emerald-300">
+          <b>Risk/Reward:</b>{' '}
+          {(() => {
+            const risk = Math.abs(entryPrice - stopLoss)
+            const reward =
+              takeProfitTargets.length > 0 ? Math.abs(takeProfitTargets[0].price - entryPrice) : 0
+            return risk > 0 ? (reward / risk).toFixed(2) : 'N/A'
+          })()}
+          :1
+        </div>
+        <div className="text-xs text-cyan-300">
+          <b>Profit:</b>{' '}
+          {(() => {
+            const risk = Math.abs(entryPrice - stopLoss)
+            const reward =
+              takeProfitTargets.length > 0 ? Math.abs(takeProfitTargets[0].price - entryPrice) : 0
+            return (reward * 10).toFixed(2)
+          })()}{' '}
+          (0.1 lot)
         </div>
       </div>
       {nearestOB && (
