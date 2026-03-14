@@ -1,8 +1,10 @@
-﻿type TakeProfitTarget = {
+﻿
+'use client'
+
+type TakeProfitTarget = {
   label: string
   value: number
 }
-;('use client')
 
 import { useState } from 'react'
 import TrendsNavigation from '@/components/TrendsNavigation'
