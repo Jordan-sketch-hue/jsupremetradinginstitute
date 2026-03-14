@@ -253,6 +253,7 @@ export default function TrendsPage() {
                     </span>
                   )}
                   {asset.takeProfitTargets && asset.takeProfitTargets.length > 0 && (
+                                      {/* Forced rebuild: ensure only type-safe TP rendering is present */}
                     <>
                       {asset.takeProfitTargets.map((tp: TakeProfitTarget, idx: number) => (
                         <span
