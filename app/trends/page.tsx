@@ -1,5 +1,6 @@
 ﻿'use client'
 import { useState } from 'react'
+import { useAssetAnalysis } from '@/lib/useAssetAnalysis'
 import TrendsNavigation from '@/components/TrendsNavigation'
 import { TrendsDashboard } from '@/components/TrendsDashboard'
 import EconomicNewsSection from '@/components/EconomicNewsSection'
@@ -42,7 +43,6 @@ const assetList = [
   { symbol: 'BCHUSD', name: 'Bitcoin Cash', category: 'crypto' },
 ]
 import { useEffect } from 'react'
-import { analyzeTechnicals } from '@/lib/technicalAnalysis'
 
 const categories = ['forex', 'crypto', 'indices', 'commodities']
 
@@ -51,69 +51,11 @@ export default function TrendsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [showTradeDialog, setShowTradeDialog] = useState(false)
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null)
-  const [assets, setAssets] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const { assets, loading } = useAssetAnalysis(assetList, strategy)
   const [search, setSearch] = useState('')
   const [strategy, setStrategy] = useState('order-blocks-accumulation') // default: both
 
   // Fetch live data for all assets
-  useEffect(() => {
-    async function fetchAllAssets() {
-      setLoading(true)
-      const results: any[] = []
-      await Promise.all(
-        assetList.map(async asset => {
-          try {
-            const res = await fetch(
-              `/api/market-data/historical?symbol=${asset.symbol}&type=${asset.category}&timeframe=1h&strategy=${strategy}`
-            )
-            const data = await res.json()
-            const candles = data.candles || []
-            const latest = candles[candles.length - 1]
-            const prev = candles[candles.length - 2]
-            const price = latest?.close ?? 0
-            const change = latest && prev ? latest.close - prev.close : 0
-            const changePercent =
-              latest && prev && prev.close ? ((latest.close - prev.close) / prev.close) * 100 : 0
-            const prices = candles.map((c: any) => c.close)
-            const ta = analyzeTechnicals(prices)
-            results.push({
-              ...asset,
-              price,
-              change,
-              changePercent,
-              rsi: ta.rsi,
-              trend: ta.trend,
-              macdSignal: ta.macdSignal,
-              confidence: ta.confidence,
-              chartData: candles.slice(-24).map((c: any) => ({
-                time: new Date(c.timestamp).toLocaleTimeString(),
-                value: c.close,
-              })),
-              entryZone: data.entryZone || '',
-              stopLoss: data.stopLoss || '',
-              takeProfitTargets: data.takeProfitTargets || [],
-            })
-          } catch (err) {
-            results.push({
-              ...asset,
-              price: 0,
-              change: 0,
-              changePercent: 0,
-              rsi: 0,
-              trend: 'N/A',
-              macdSignal: 'N/A',
-              confidence: 0,
-              chartData: [],
-            })
-          }
-        })
-      )
-      setAssets(results)
-      setLoading(false)
-    }
-    fetchAllAssets()
-  }, [strategy])
 
   // Filter assets by selected category and search
   const filteredAssets =
