@@ -1,4 +1,8 @@
-﻿'use client'
+﻿type TakeProfitTarget = {
+  label: string
+  value: number
+}
+;('use client')
 
 import { useState } from 'react'
 import TrendsNavigation from '@/components/TrendsNavigation'
@@ -243,13 +247,22 @@ export default function TrendsPage() {
                       Entry: <span className="font-bold">{asset.entryZone}</span>
                     </span>
                   )}
-                  {asset.takeProfitTargets && asset.takeProfitTargets.length > 0 && (
-                    <span className="bg-slate-800 px-2 py-1 rounded text-xs text-yellow-400">
-                      TP:{' '}
-                      <span className="font-bold">
-                        {asset.takeProfitTargets.map(tp => tp.label + ' ' + tp.value).join(' • ')}
-                      </span>
+                  {asset.stopLoss && (
+                    <span className="bg-slate-800 px-2 py-1 rounded text-xs text-red-400">
+                      SL: <span className="font-bold">{asset.stopLoss}</span>
                     </span>
+                  )}
+                  {asset.takeProfitTargets && asset.takeProfitTargets.length > 0 && (
+                    <>
+                      {asset.takeProfitTargets.map((tp: TakeProfitTarget, idx: number) => (
+                        <span
+                          key={tp.label}
+                          className={`bg-slate-800 px-2 py-1 rounded text-xs text-yellow-400`}
+                        >
+                          TP{idx + 1}: <span className="font-bold">{tp.value}</span>
+                        </span>
+                      ))}
+                    </>
                   )}
                 </div>
                 {/* Price Predict-o-Meter™ */}
