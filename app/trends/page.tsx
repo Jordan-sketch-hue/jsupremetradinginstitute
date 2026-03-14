@@ -185,13 +185,11 @@ export default function TrendsPage() {
         </button>
       </div>
 
-      {/* Asset Cards */}
-      <section id="assets" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
-        <h2 className="text-2xl font-bold mb-6">
-          {selectedCategory === 'top' ? 'Top Trades' : 'All Assets'}
-        </h2>
+      {/* Overview Section (All Assets) */}
+      <section id="overview" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-6">All Assets</h2>
         <div className="flex flex-wrap gap-6">
-          {(selectedCategory === 'top' ? topTrades : searchedAssets).map(asset => (
+          {searchedAssets.map(asset => (
             <div key={asset.symbol} className="w-[340px]">
               <div className="bg-slate-900 rounded-xl shadow-lg p-4 flex flex-col gap-3 border border-slate-700 hover:shadow-2xl transition-shadow">
                 <div className="flex items-center gap-2 mb-2">
@@ -254,27 +252,194 @@ export default function TrendsPage() {
         </div>
       </section>
 
-      {/* Other Sections */}
-      <section id="debrief" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
-        <h2 className="text-2xl font-bold mb-2 flex items-center">Daily Debrief</h2>
-        <OrderBlockSection />
-      </section>
-
+      {/* Live Signals */}
       <section id="signals" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
         <h2 className="text-2xl font-bold mb-2 flex items-center">Live Signals</h2>
         <NotificationSystem />
       </section>
 
-      <section id="news" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
-        <h2 className="text-2xl font-bold mb-2 flex items-center">Economic News</h2>
-        <EconomicNewsSection />
+      {/* Forex Pairs */}
+      <section id="forex" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-2 flex items-center">Forex Pairs</h2>
+        {/* Filtered forex assets */}
+        <div className="flex flex-wrap gap-6">
+          {assets
+            .filter(a => a.category === 'forex')
+            .map(asset => (
+              <div key={asset.symbol} className="w-[340px]">
+                <div className="bg-slate-900 rounded-xl shadow-lg p-4 flex flex-col gap-3 border border-slate-700 hover:shadow-2xl transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold text-lg text-slate-100">{asset.name}</span>
+                    <span className="ml-2 px-2 py-0.5 rounded bg-gradient-to-r from-emerald-600 to-indigo-600 text-xs font-bold text-white flex items-center gap-1">
+                      True Chart Analysis
+                      <span style={{ fontSize: '0.8em', marginLeft: '2px' }}>™</span>
+                    </span>
+                    <span className="ml-auto text-xs text-slate-400">{asset.symbol}</span>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <span className="text-2xl font-extrabold text-emerald-400">
+                      ${asset.price.toFixed(4)}
+                    </span>
+                    <span
+                      className={`text-sm font-bold ${asset.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                    >
+                      {asset.change >= 0 ? '+' : ''}
+                      {asset.change.toFixed(4)} ({asset.changePercent.toFixed(2)}%)
+                    </span>
+                  </div>
+                  <button
+                    className="mt-4 px-3 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-500"
+                    onClick={() => {
+                      setSelectedAsset(asset)
+                    }}
+                  >
+                    View Full Analysis
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
       </section>
 
+      {/* Crypto */}
+      <section id="crypto" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-2 flex items-center">Crypto</h2>
+        <div className="flex flex-wrap gap-6">
+          {assets
+            .filter(a => a.category === 'crypto')
+            .map(asset => (
+              <div key={asset.symbol} className="w-[340px]">
+                <div className="bg-slate-900 rounded-xl shadow-lg p-4 flex flex-col gap-3 border border-slate-700 hover:shadow-2xl transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold text-lg text-slate-100">{asset.name}</span>
+                    <span className="ml-2 px-2 py-0.5 rounded bg-gradient-to-r from-emerald-600 to-indigo-600 text-xs font-bold text-white flex items-center gap-1">
+                      True Chart Analysis
+                      <span style={{ fontSize: '0.8em', marginLeft: '2px' }}>™</span>
+                    </span>
+                    <span className="ml-auto text-xs text-slate-400">{asset.symbol}</span>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <span className="text-2xl font-extrabold text-emerald-400">
+                      ${asset.price.toFixed(4)}
+                    </span>
+                    <span
+                      className={`text-sm font-bold ${asset.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                    >
+                      {asset.change >= 0 ? '+' : ''}
+                      {asset.change.toFixed(4)} ({asset.changePercent.toFixed(2)}%)
+                    </span>
+                  </div>
+                  <button
+                    className="mt-4 px-3 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-500"
+                    onClick={() => {
+                      setSelectedAsset(asset)
+                    }}
+                  >
+                    View Full Analysis
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+      </section>
+
+      {/* Indices */}
+      <section id="indices" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-2 flex items-center">Indices</h2>
+        <div className="flex flex-wrap gap-6">
+          {assets
+            .filter(a => a.category === 'indices')
+            .map(asset => (
+              <div key={asset.symbol} className="w-[340px]">
+                <div className="bg-slate-900 rounded-xl shadow-lg p-4 flex flex-col gap-3 border border-slate-700 hover:shadow-2xl transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold text-lg text-slate-100">{asset.name}</span>
+                    <span className="ml-2 px-2 py-0.5 rounded bg-gradient-to-r from-emerald-600 to-indigo-600 text-xs font-bold text-white flex items-center gap-1">
+                      True Chart Analysis
+                      <span style={{ fontSize: '0.8em', marginLeft: '2px' }}>™</span>
+                    </span>
+                    <span className="ml-auto text-xs text-slate-400">{asset.symbol}</span>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <span className="text-2xl font-extrabold text-emerald-400">
+                      ${asset.price.toFixed(4)}
+                    </span>
+                    <span
+                      className={`text-sm font-bold ${asset.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                    >
+                      {asset.change >= 0 ? '+' : ''}
+                      {asset.change.toFixed(4)} ({asset.changePercent.toFixed(2)}%)
+                    </span>
+                  </div>
+                  <button
+                    className="mt-4 px-3 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-500"
+                    onClick={() => {
+                      setSelectedAsset(asset)
+                    }}
+                  >
+                    View Full Analysis
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+      </section>
+
+      {/* Commodities */}
+      <section id="commodities" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-2 flex items-center">Commodities</h2>
+        <div className="flex flex-wrap gap-6">
+          {assets
+            .filter(a => a.category === 'commodities')
+            .map(asset => (
+              <div key={asset.symbol} className="w-[340px]">
+                <div className="bg-slate-900 rounded-xl shadow-lg p-4 flex flex-col gap-3 border border-slate-700 hover:shadow-2xl transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold text-lg text-slate-100">{asset.name}</span>
+                    <span className="ml-2 px-2 py-0.5 rounded bg-gradient-to-r from-emerald-600 to-indigo-600 text-xs font-bold text-white flex items-center gap-1">
+                      True Chart Analysis
+                      <span style={{ fontSize: '0.8em', marginLeft: '2px' }}>™</span>
+                    </span>
+                    <span className="ml-auto text-xs text-slate-400">{asset.symbol}</span>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <span className="text-2xl font-extrabold text-emerald-400">
+                      ${asset.price.toFixed(4)}
+                    </span>
+                    <span
+                      className={`text-sm font-bold ${asset.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+                    >
+                      {asset.change >= 0 ? '+' : ''}
+                      {asset.change.toFixed(4)} ({asset.changePercent.toFixed(2)}%)
+                    </span>
+                  </div>
+                  <button
+                    className="mt-4 px-3 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-500"
+                    onClick={() => {
+                      setSelectedAsset(asset)
+                    }}
+                  >
+                    View Full Analysis
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+      </section>
+
+      {/* Market Debrief */}
+      <section id="debrief" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
+        <h2 className="text-2xl font-bold mb-2 flex items-center">Market Debrief</h2>
+        <OrderBlockSection />
+      </section>
+
+      {/* Analysis Failures */}
       <section id="failures" className="max-w-7xl mx-auto p-8 mb-12 border-b border-slate-800">
         <h2 className="text-2xl font-bold mb-2 flex items-center">Analysis Failures</h2>
         {/* Add failure reporting component here if available */}
       </section>
 
+      {/* Bot Dashboard */}
       <section id="dashboard" className="max-w-7xl mx-auto p-8 mb-12">
         <h2 className="text-2xl font-bold mb-2 flex items-center">Bot Dashboard</h2>
         {/* Add bot dashboard component or link here */}
