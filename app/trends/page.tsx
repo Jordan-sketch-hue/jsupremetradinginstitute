@@ -1,5 +1,4 @@
 ﻿
-type TakeProfitTarget = {
 
 "use client";
 import { useState } from 'react'
