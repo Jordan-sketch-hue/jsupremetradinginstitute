@@ -437,25 +437,117 @@ export default function OrderBlockChart({
         </h3>
         <div className="text-sm text-slate-400">Current: ${currentPrice.toFixed(4)}</div>
       </div>
-      <div className="mb-3 flex flex-wrap gap-2">
-        {/* Button controls (actual buttons from previous code) */}
-        <button onClick={() => setChartMode(mode => (mode === 'candles' ? 'line' : 'candles'))}>
-          Candlestick
+      {/* Improved Nav Bar & Zoom Controls */}
+      <div className="mb-3 flex flex-wrap gap-2 items-center bg-slate-900 rounded-lg px-3 py-2 border border-slate-700">
+        {/* Chart Mode */}
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${chartMode === 'candles' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setChartMode('candles')}
+        >
+          🕯️ Candlestick
         </button>
-        <button onClick={() => setChartMode(mode => (mode === 'line' ? 'candles' : 'line'))}>
-          Line
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${chartMode === 'line' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setChartMode('line')}
+        >
+          📈 Line
         </button>
-        <button onClick={() => setObRangeMode('recent')}>Recent OBs</button>
-        <button onClick={() => setObRangeMode('older')}>Older OBs</button>
-        <button onClick={() => setObRangeMode('all')}>All OBs</button>
-        <button onClick={() => setShowBullishOB(v => !v)}>Bullish OB</button>
-        <button onClick={() => setShowBearishOB(v => !v)}>Bearish OB</button>
-        <button onClick={() => setShowSupport(v => !v)}>Support</button>
-        <button onClick={() => setShowResistance(v => !v)}>Resistance</button>
-        <button onClick={() => setShowEntryTargets(v => !v)}>Entry / TP</button>
-        <button onClick={() => setShowStopLoss(v => !v)}>Stop Loss</button>
-        <button onClick={() => setShowCurrentPrice(v => !v)}>Current Price</button>
-        <button onClick={() => setShowLiquiditySweeps(v => !v)}>Liquidity Sweeps</button>
+        {/* OB Range */}
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${obRangeMode === 'recent' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setObRangeMode('recent')}
+        >
+          Recent OBs
+        </button>
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${obRangeMode === 'older' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setObRangeMode('older')}
+        >
+          Older OBs
+        </button>
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${obRangeMode === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setObRangeMode('all')}
+        >
+          All OBs
+        </button>
+        {/* Overlays */}
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${showBullishOB ? 'bg-green-700 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setShowBullishOB(v => !v)}
+        >
+          Bullish OB
+        </button>
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${showBearishOB ? 'bg-red-700 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setShowBearishOB(v => !v)}
+        >
+          Bearish OB
+        </button>
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${showSupport ? 'bg-blue-700 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setShowSupport(v => !v)}
+        >
+          Support
+        </button>
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${showResistance ? 'bg-amber-700 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setShowResistance(v => !v)}
+        >
+          Resistance
+        </button>
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${showEntryTargets ? 'bg-lime-700 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setShowEntryTargets(v => !v)}
+        >
+          Entry / TP
+        </button>
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${showStopLoss ? 'bg-red-900 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setShowStopLoss(v => !v)}
+        >
+          Stop Loss
+        </button>
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${showCurrentPrice ? 'bg-purple-700 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setShowCurrentPrice(v => !v)}
+        >
+          Current Price
+        </button>
+        <button
+          className={`px-3 py-1 rounded font-semibold transition-colors ${showLiquiditySweeps ? 'bg-orange-700 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          onClick={() => setShowLiquiditySweeps(v => !v)}
+        >
+          Liquidity Sweeps
+        </button>
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-1 ml-4">
+          <button
+            className="px-2 py-1 rounded bg-slate-700 text-white font-bold"
+            onClick={() => setZoom(z => Math.max(1, z - 0.5))}
+            title="Zoom Out"
+          >
+            -
+          </button>
+          <span className="px-2 text-slate-300">Zoom: {zoom.toFixed(1)}x</span>
+          <button
+            className="px-2 py-1 rounded bg-slate-700 text-white font-bold"
+            onClick={() => setZoom(z => Math.min(6, z + 0.5))}
+            title="Zoom In"
+          >
+            +
+          </button>
+          <button
+            className="px-2 py-1 rounded bg-slate-700 text-white font-bold"
+            onClick={() => {
+              setZoom(1)
+              setPan(0)
+            }}
+            title="Reset View"
+          >
+            ⟳
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto mb-4">
         <div
@@ -568,10 +660,11 @@ export default function OrderBlockChart({
                   x2={chartWidth}
                   y2={yEntry}
                   stroke="#22c55e"
-                  strokeWidth="1.5"
+                  strokeWidth="2.5"
                   strokeDasharray="4"
+                  opacity="0.95"
                 />
-                <text x={8} y={yEntry - 6} fill="#22c55e" fontSize="11" fontWeight="700">
+                <text x={8} y={yEntry - 6} fill="#22c55e" fontSize="13" fontWeight="900">
                   Entry
                 </text>
                 {takeProfitTargets.map(tp => {
@@ -583,19 +676,20 @@ export default function OrderBlockChart({
                         y1={y}
                         x2={chartWidth}
                         y2={y}
-                        stroke="#10b981"
-                        strokeWidth="1.25"
-                        strokeDasharray="3"
-                        opacity="0.8"
+                        stroke="#facc15"
+                        strokeWidth="3"
+                        strokeDasharray="6"
+                        opacity="0.95"
                       />
                       <text
                         x={chartWidth - 70}
                         y={y - 6}
-                        fill="#10b981"
-                        fontSize="10"
-                        fontWeight="700"
+                        fill="#facc15"
+                        fontSize="13"
+                        fontWeight="900"
+                        style={{ textShadow: '0 1px 4px #000' }}
                       >
-                        {tp.label}
+                        TP: {tp.label}
                       </text>
                     </g>
                   )
