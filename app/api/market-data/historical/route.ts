@@ -6,7 +6,7 @@ import { getHistoricalCandles } from '@/lib/marketDataProvider'
 import { detectOrderBlocks } from '@/lib/orderBlockDetection'
 import { detectAccumulationRanges } from '@/lib/accumulationDetection'
 import { detectLiquiditySweeps } from '@/lib/liquiditySweepDetection'
-import { analyzeHighTimeFrameZones } from '@/lib/highTimeFrameAnalysis'
+import { analyzeHighTimeFrameZones, HTFZone } from '@/lib/highTimeFrameAnalysis'
 
 interface Candle {
   timestamp: number
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 
     // High Time Frame analysis (run for 4H and 1D)
     // For demo, fetch 4H and 1D candles and analyze
-    let htfZones = []
+    let htfZones: HTFZone[] = []
     try {
       const htfCandles: any = {}
       for (const tf of ['4h', '1d']) {
