@@ -129,7 +129,6 @@ export default function TrendsPage() {
 
   // Top trades: sort by confidence
   const topTrades = [...assets].sort((a, b) => b.confidence - a.confidence).slice(0, 5)
-
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
       <TrendsNavigation onNavigate={setActiveSection} activeSection={activeSection} />
