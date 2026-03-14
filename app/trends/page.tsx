@@ -90,6 +90,9 @@ export default function TrendsPage() {
                 time: new Date(c.timestamp).toLocaleTimeString(),
                 value: c.close,
               })),
+              entryZone: data.entryZone || '',
+              stopLoss: data.stopLoss || '',
+              takeProfitTargets: data.takeProfitTargets || [],
             })
           } catch (err) {
             results.push({
@@ -247,39 +250,46 @@ export default function TrendsPage() {
                   )}
                   {asset.takeProfitTargets && asset.takeProfitTargets.length > 0 && (
                     <>
-                      {asset.takeProfitTargets.map((tp: { label: string; value: number|string }, idx: number) => (
-                        <span
-                          key={tp.label || idx}
-                          className="bg-slate-800 px-2 py-1 rounded text-xs text-yellow-400"
-                        >
-                          TP{idx + 1}: <span className="font-bold">{tp.value}</span>
-                        </span>
-                      ))}
+                      {asset.takeProfitTargets.map(
+                        (tp: { label: string; value: number | string }, idx: number) => (
+                          <span
+                            key={tp.label || idx}
+                            className="bg-slate-800 px-2 py-1 rounded text-xs text-yellow-400"
+                          >
+                            TP{idx + 1}: <span className="font-bold">{tp.value}</span>
+                          </span>
+                        )
+                      )}
                     </>
                   )}
                 </div>
                 {/* Price Predict-o-Meter™ */}
-                <div className="mt-2 bg-slate-800 px-2 py-1 rounded text-xs flex items-center gap-2">
-                  <span className="font-bold text-pink-400">Price Predict-o-Meter™:</span>
-                  <span>
-                    {asset.trend === 'BULLISH' && asset.confidence >= 55
-                      ? 'Likely Up'
-                      : asset.trend === 'BEARISH' && asset.confidence >= 55
-                        ? 'Likely Down'
-                        : 'Sideways/Uncertain'}
-                  </span>
-                  <span className="text-slate-400">
-                    | Confidence:{' '}
-                    <span className="font-bold text-emerald-400">
-                      {typeof asset.confidence === 'number' ? `${asset.confidence}%` : '—'}
+                <div className="mt-4 bg-slate-800 px-4 py-3 rounded text-xs flex flex-col gap-2 border border-slate-700">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-pink-400">Price Predict-o-Meter™</span>
+                    <span className="text-slate-500">|</span>
+                    <span className="font-semibold text-white">
+                      {asset.trend === 'BULLISH' && asset.confidence >= 55
+                        ? 'Likely Up'
+                        : asset.trend === 'BEARISH' && asset.confidence >= 55
+                          ? 'Likely Down'
+                          : 'Sideways/Uncertain'}
                     </span>
-                  </span>
-                  <span className="text-slate-400">
-                    | Est. Time:{' '}
-                    <span className="font-bold text-blue-300">
-                      {asset.trend === 'BULLISH' || asset.trend === 'BEARISH' ? '1-2 days' : '—'}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-slate-400">
+                      Confidence:{' '}
+                      <span className="font-bold text-emerald-400">
+                        {typeof asset.confidence === 'number' ? `${asset.confidence}%` : '—'}
+                      </span>
                     </span>
-                  </span>
+                    <span className="text-slate-400">
+                      Est. Time:{' '}
+                      <span className="font-bold text-blue-300">
+                        {asset.trend === 'BULLISH' || asset.trend === 'BEARISH' ? '1-2 days' : '—'}
+                      </span>
+                    </span>
+                  </div>
                 </div>
                 <button
                   className="mt-4 px-3 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-500"
