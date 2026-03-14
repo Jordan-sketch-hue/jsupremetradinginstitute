@@ -247,12 +247,11 @@ export default function TrendsPage() {
                     </span>
                   )}
                   {asset.takeProfitTargets && asset.takeProfitTargets.length > 0 && (
-                                      {/* Forced rebuild: ensure only type-safe TP rendering is present */}
                     <>
-                      {asset.takeProfitTargets.map((tp: TakeProfitTarget, idx: number) => (
+                      {asset.takeProfitTargets.map((tp, idx) => (
                         <span
-                          key={tp.label}
-                          className={`bg-slate-800 px-2 py-1 rounded text-xs text-yellow-400`}
+                          key={tp.label || idx}
+                          className="bg-slate-800 px-2 py-1 rounded text-xs text-yellow-400"
                         >
                           TP{idx + 1}: <span className="font-bold">{tp.value}</span>
                         </span>
