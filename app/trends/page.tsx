@@ -1,5 +1,4 @@
-﻿
-"use client";
+﻿'use client'
 import { useState } from 'react'
 import TrendsNavigation from '@/components/TrendsNavigation'
 import { TrendsDashboard } from '@/components/TrendsDashboard'
@@ -41,7 +40,7 @@ const assetList = [
   { symbol: 'UK100', name: 'FTSE 100', category: 'indices' },
   { symbol: 'BTCUSD', name: 'Bitcoin', category: 'crypto' },
   { symbol: 'BCHUSD', name: 'Bitcoin Cash', category: 'crypto' },
-];
+]
 import { useEffect } from 'react'
 import { analyzeTechnicals } from '@/lib/technicalAnalysis'
 
@@ -248,7 +247,7 @@ export default function TrendsPage() {
                   )}
                   {asset.takeProfitTargets && asset.takeProfitTargets.length > 0 && (
                     <>
-                      {asset.takeProfitTargets.map((tp, idx) => (
+                      {asset.takeProfitTargets.map((tp: { label: string; value: number|string }, idx: number) => (
                         <span
                           key={tp.label || idx}
                           className="bg-slate-800 px-2 py-1 rounded text-xs text-yellow-400"
