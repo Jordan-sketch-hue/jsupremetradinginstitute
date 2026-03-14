@@ -315,21 +315,30 @@ export default function AssetDetailModal({ asset, onClose }: AssetDetailModalPro
               </div>
 
               {/* Chart */}
-              {candles.length > 0 && (
-                <OrderBlockChart
-                  symbol={asset.symbol}
-                  timeframe={timeframe}
-                  candles={candles}
-                  orderBlocks={analysis?.orderBlocks || []}
-                  support={analysis?.support || []}
-                  resistance={analysis?.resistance || []}
-                  nearestOB={analysis?.nearestOB || null}
-                  currentPrice={asset.price}
-                  entryPrice={entryPrice}
-                  stopLoss={stopLoss}
-                  takeProfitTargets={takeProfitTargets}
-                />
-              )}
+              {/* TradingView Advanced Chart for full markup and multi-timeframe */}
+              <div className="my-8">
+                <h3 className="text-lg font-semibold text-slate-100 mb-2">
+                  Interactive Chart (TradingView)
+                </h3>
+                <div className="rounded-lg border border-slate-700 overflow-hidden bg-black">
+                  {/* Use TradingView advanced chart widget for full features */}
+                  {/* @ts-ignore */}
+                  {typeof window !== 'undefined' && (
+                    <>
+                      {/** Dynamically import to avoid SSR issues */}
+                      {require('./TradingViewWidgets').AdvancedChartWidget({
+                        symbol: asset.symbol.includes('USD')
+                          ? `FX_IDC:${asset.symbol}`
+                          : asset.symbol,
+                        height: 600,
+                      })}
+                    </>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400 mt-2">
+                  Full TradingView chart: markup, all timeframes, and drawing tools available.
+                </p>
+              </div>
 
               <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-100 mb-3">
