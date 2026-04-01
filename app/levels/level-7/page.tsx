@@ -915,7 +915,7 @@ Now go earn it.
             <Trophy className="w-16 h-16 mx-auto mb-4 text-accent-gold" />
             <h2 className="text-3xl font-bold text-matte-black mb-3">Congratulations!</h2>
             <p className="text-xl text-gray-700 mb-6">
-              You've completed all 7 levels of J Supreme Trading Institute. You now have
+              You've completed Level 7 of J Supreme Trading Institute. You now have
               professional-level trading education.
             </p>
             <div className="bg-white border-2 border-royal-green rounded-xl p-6 mb-6">
@@ -930,6 +930,12 @@ Now go earn it.
                 <li>✓ Scale position size as your account grows</li>
               </ul>
             </div>
+            <a
+              href="/levels/level-8"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-400 text-white font-bold rounded-lg hover:shadow-lg hover:shadow-blue-400/50 transition-all mb-4"
+            >
+              Continue to Level 8: Order Block Entries & Exits
+            </a>
             <a
               href="/dashboard"
               className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-royal-green to-royal-emerald text-white font-bold rounded-lg hover:shadow-lg hover:shadow-royal-green/50 transition-all"
